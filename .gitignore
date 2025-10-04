@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+.DS_Store
+backend/replay_parser
+backend/replay_parser.exe
+frontend/build/
