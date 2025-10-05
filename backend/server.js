@@ -236,47 +236,50 @@ app.post('/api/replays/import', async (req, res) => {
     ]);
     
     const matchId = matchResult.rows[0].match_id;
-    
     // Insert players and stats
-    for (const playerData of replayData.players) {
-      // Insert or get player
-      const playerResult = await client.query(`
-        INSERT INTO players (player_name, platform)
-        VALUES ($1, $2)
-        ON CONFLICT DO NOTHING
-        RETURNING player_id
-      `, [playerData.name, playerData.platform]);
-      
-      let playerId;
-      if (playerResult.rows.length > 0) {
-        playerId = playerResult.rows[0].player_id;
-      } else {
-        const existingPlayer = await client.query(
-          'SELECT player_id FROM players WHERE player_name = $1 AND platform = $2',
-          [playerData.name, playerData.platform]
-        );
-        playerId = existingPlayer.rows[0].player_id;
-      }
-      
-      // Insert player stats
-      await client.query(`
-        INSERT INTO player_stats (
-          match_id, player_id, team, goals, assists, 
-          saves, shots, score, mvp
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [
-        matchId,
-        playerId,
-        playerData.team,
-        playerData.goals,
-        playerData.assists,
-        playerData.saves,
-        playerData.shots,
-        playerData.score,
-        playerData.mvp
-      ]);
-    }
+for (const playerData of replayData.players) {
+  // Insert or get player - check by BOTH name AND platform
+  let playerId;
+  
+  const existingPlayer = await client.query(
+    'SELECT player_id FROM players WHERE player_name = $1 AND platform = $2',
+    [playerData.name, playerData.platform]
+  );
+  
+  if (existingPlayer.rows.length > 0) {
+    // Player exists, use existing ID
+    playerId = existingPlayer.rows[0].player_id;
+  } else {
+    // New player, insert
+    const playerResult = await client.query(`
+      INSERT INTO players (player_name, platform)
+      VALUES ($1, $2)
+      RETURNING player_id
+    `, [playerData.name, playerData.platform]);
+    
+    playerId = playerResult.rows[0].player_id;
+  }
+  
+  // Insert player stats
+  await client.query(`
+    INSERT INTO player_stats (
+      match_id, player_id, team, goals, assists, 
+      saves, shots, score, mvp
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    ON CONFLICT (match_id, player_id) DO NOTHING
+  `, [
+    matchId,
+    playerId,
+    playerData.team,
+    playerData.goals,
+    playerData.assists,
+    playerData.saves,
+    playerData.shots,
+    playerData.score,
+    playerData.mvp
+  ]);
+}
     
     await client.query('COMMIT');
     
