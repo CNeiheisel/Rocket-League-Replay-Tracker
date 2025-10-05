@@ -34,36 +34,77 @@ const CPP_PARSER_PATH = './replay_parser'; // Adjust path as needed
 
 // Parse replay using C++ + BallChasing API
 async function parseReplayFromBallChasing(replayId) {
-  return new Promise((resolve, reject) => {
-    const cppProcess = spawn(CPP_PARSER_PATH, [replayId, '--json']);
-    let data = '';
-    let errorData = '';
-    
-    cppProcess.stdout.on('data', (chunk) => {
-      data += chunk.toString();
-    });
-    
-    cppProcess.stderr.on('data', (chunk) => {
-      errorData += chunk.toString();
-    });
-    
-    cppProcess.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Replay parsing failed: ${errorData}`));
-      } else {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) {
-            reject(new Error(parsed.error));
-          } else {
-            resolve(parsed);
-          }
-        } catch (e) {
-          reject(new Error(`Invalid JSON from parser: ${e.message}`));
-        }
+  try {
+    const response = await fetch(`https://ballchasing.com/api/replays/${replayId}`, {
+      headers: {
+        'Authorization': 'iKoZM4PZP3A2lv7iPLI71ymE9fg94YBdC8xFZFIq'
       }
     });
-  });
+
+    if (!response.ok) {
+      throw new Error(`BallChasing API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'ok') {
+      throw new Error(`Replay status: ${data.status}`);
+    }
+
+    // Transform to our format
+    const formatted = {
+      replay_id: replayId,
+      title: data.title || 'Unknown',
+      map: data.map_code || 'Unknown',
+      date: data.date || new Date().toISOString(),
+      duration: data.duration || 300,
+      gameMode: data.playlist_name || 'Standard',
+      blueScore: data.blue.stats.core.goals,
+      orangeScore: data.orange.stats.core.goals,
+      winningTeam: data.blue.stats.core.goals > data.orange.stats.core.goals ? 'blue' : 'orange',
+      players: [],
+      success: true
+    };
+
+    // Process blue team
+    if (data.blue.players) {
+      for (const player of data.blue.players) {
+        formatted.players.push({
+          name: player.name,
+          team: 'blue',
+          platform: player.id?.platform || 'Unknown',
+          score: player.stats.core.score,
+          goals: player.stats.core.goals,
+          assists: player.stats.core.assists,
+          saves: player.stats.core.saves,
+          shots: player.stats.core.shots,
+          mvp: player.mvp || false
+        });
+      }
+    }
+
+    // Process orange team
+    if (data.orange.players) {
+      for (const player of data.orange.players) {
+        formatted.players.push({
+          name: player.name,
+          team: 'orange',
+          platform: player.id?.platform || 'Unknown',
+          score: player.stats.core.score,
+          goals: player.stats.core.goals,
+          assists: player.stats.core.assists,
+          saves: player.stats.core.saves,
+          shots: player.stats.core.shots,
+          mvp: player.mvp || false
+        });
+      }
+    }
+
+    return formatted;
+  } catch (error) {
+    console.error('BallChasing API error:', error);
+    throw error;
+  }
 }
 
 // ============ API ENDPOINTS ============
