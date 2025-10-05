@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const { spawn } = require('child_process');
+
 const path = require('path');
 
 const app = express();
