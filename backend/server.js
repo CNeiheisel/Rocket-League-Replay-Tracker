@@ -12,7 +12,7 @@ const port = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://rocket-league-replay-tracker-1nbd-ddr0yptvp.vercel.app'
+    /^https:\/\/rocket-league-replay-tracker.*\.vercel\.app$/  // Allow all your Vercel deployments
   ],
   credentials: true
 }));
