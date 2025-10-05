@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Upload, TrendingUp, Award, Target, Search } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://rocket-league-replay-tracker.onrender.com/api';
 
 export default function RocketLeagueDashboard() {
   const [matches, setMatches] = useState([]);
