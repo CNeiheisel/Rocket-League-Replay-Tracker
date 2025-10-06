@@ -1,8 +1,142 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://rocket-league-replay-tracker.onrender.com/api';
+const API_URL = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL 
+  ? process.env.REACT_APP_API_URL 
+  : 'https://rocket-league-replay-tracker.onrender.com/api';
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%)',
+    color: 'white',
+    padding: '24px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
+  container: {
+    maxWidth: '1400px',
+    margin: '0 auto'
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '40px'
+  },
+  title: {
+    fontSize: '48px',
+    fontWeight: '900',
+    background: 'linear-gradient(to right, #60a5fa, #a78bfa, #fb923c)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    marginBottom: '8px'
+  },
+  subtitle: {
+    color: '#d1d5db',
+    fontSize: '18px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
+  },
+  card: {
+    background: 'rgba(30, 41, 59, 0.8)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '16px',
+    padding: '24px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    marginBottom: '24px'
+  },
+  button: {
+    padding: '12px 24px',
+    borderRadius: '12px',
+    border: 'none',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
+    fontSize: '16px'
+  },
+  buttonPrimary: {
+    background: 'linear-gradient(to right, #3b82f6, #2563eb)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)'
+  },
+  buttonOrange: {
+    background: 'linear-gradient(to right, #f97316, #dc2626)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)'
+  },
+  input: {
+    padding: '12px 16px',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    background: 'rgba(15, 23, 42, 0.5)',
+    color: 'white',
+    fontSize: '16px',
+    width: '100%'
+  },
+  statCard: {
+    background: 'rgba(30, 41, 59, 0.8)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '16px',
+    padding: '24px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    transition: 'transform 0.3s',
+    cursor: 'pointer'
+  },
+  statValue: {
+    fontSize: '36px',
+    fontWeight: '900',
+    background: 'linear-gradient(to right, white, #d1d5db)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse'
+  },
+  tableHeader: {
+    textAlign: 'left',
+    padding: '16px',
+    color: '#9ca3af',
+    fontWeight: '700',
+    borderBottom: '2px solid #374151'
+  },
+  tableRow: {
+    borderBottom: '1px solid rgba(55, 65, 81, 0.5)',
+    transition: 'background 0.2s'
+  },
+  tableCell: {
+    padding: '16px'
+  },
+  badge: {
+    display: 'inline-block',
+    padding: '6px 12px',
+    borderRadius: '999px',
+    fontWeight: '700',
+    fontSize: '14px'
+  },
+  tab: {
+    padding: '12px 24px',
+    borderRadius: '12px',
+    border: 'none',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
+    fontSize: '16px',
+    marginRight: '12px'
+  },
+  tabActive: {
+    background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+    color: 'white',
+    boxShadow: '0 4px 15px rgba(59, 130, 246, 0.5)'
+  },
+  tabInactive: {
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: 'white'
+  }
+};
 
 export default function RocketLeagueDashboard() {
   const [matches, setMatches] = useState([]);
@@ -129,62 +263,37 @@ export default function RocketLeagueDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-          <div className="text-white text-xl font-semibold">Loading...</div>
+      <div style={{...styles.page, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+        <div style={{textAlign: 'center'}}>
+          <div style={{fontSize: '20px', fontWeight: '600'}}>Loading...</div>
         </div>
       </div>
     );
   }
 
-  const getPlayerRadarData = () => {
-    if (!selectedPlayer) return [];
-    return [
-      { stat: 'Goals', value: parseFloat(selectedPlayer.avg_goals) * 10 },
-      { stat: 'Assists', value: parseFloat(selectedPlayer.avg_assists) * 10 },
-      { stat: 'Saves', value: parseFloat(selectedPlayer.avg_saves) * 10 },
-      { stat: 'Shots', value: (parseFloat(selectedPlayer.total_shots) / parseFloat(selectedPlayer.matches_played)) * 2 },
-      { stat: 'MVPs', value: (parseFloat(selectedPlayer.mvp_count) / parseFloat(selectedPlayer.matches_played)) * 50 }
-    ];
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="relative z-10 p-6 max-w-7xl mx-auto">
+    <div style={styles.page}>
+      <div style={styles.container}>
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-3 mb-3">
-            <Zap className="text-blue-400 animate-pulse" size={40} />
-            <h1 className="text-5xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 bg-clip-text text-transparent">
-              Rocket League Replay Tracker
-            </h1>
-            <Zap className="text-orange-400 animate-pulse" size={40} />
+        <div style={styles.header}>
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '12px'}}>
+            <Zap style={{color: '#60a5fa'}} size={40} />
+            <h1 style={styles.title}>Rocket League Replay Tracker</h1>
+            <Zap style={{color: '#fb923c'}} size={40} />
           </div>
-          <p className="text-gray-300 text-lg font-medium flex items-center justify-center gap-2">
-            <Trophy className="text-yellow-400" size={20} />
+          <p style={styles.subtitle}>
+            <Trophy style={{color: '#fbbf24'}} size={20} />
             Michigan State University Varsity Team
           </p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex justify-center gap-4 mb-8">
+        {/* Tabs */}
+        <div style={{textAlign: 'center', marginBottom: '32px'}}>
           {['overview', 'players', 'matches'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                activeTab === tab
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/50 scale-105'
-                  : 'bg-white/10 hover:bg-white/20 backdrop-blur-sm'
-              }`}
+              style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive)}}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -192,50 +301,47 @@ export default function RocketLeagueDashboard() {
         </div>
 
         {/* Import Section */}
-        <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/10 shadow-2xl">
-          <div className="flex items-start gap-4">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-3 rounded-xl">
-              <Upload className="text-white" size={24} />
+        <div style={styles.card}>
+          <div style={{display: 'flex', alignItems: 'start', gap: '16px'}}>
+            <div style={{background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', padding: '12px', borderRadius: '12px'}}>
+              <Upload style={{color: 'white'}} size={24} />
             </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
+            <div style={{flex: 1}}>
+              <h3 style={{fontSize: '20px', fontWeight: '700', marginBottom: '16px'}}>
                 Import Replay from BallChasing
-                <span className="text-sm font-normal text-gray-400">Get replay IDs from ballchasing.com</span>
               </h3>
               
-              <div className="mb-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g., 63e3132f-c3c9-4182-ae44-8e253ec64f45"
-                    value={replayId}
-                    onChange={(e) => setReplayId(e.target.value)}
-                    className="flex-1 bg-slate-900/50 text-white px-4 py-3 rounded-xl border border-white/20 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 transition-all"
-                    onKeyPress={(e) => e.key === 'Enter' && handleReplayImport()}
-                  />
-                  <button
-                    onClick={handleReplayImport}
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-8 py-3 rounded-xl transition-all font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105"
-                  >
-                    Import
-                  </button>
-                </div>
+              <div style={{marginBottom: '16px', display: 'flex', gap: '12px'}}>
+                <input
+                  type="text"
+                  placeholder="e.g., 63e3132f-c3c9-4182-ae44-8e253ec64f45"
+                  value={replayId}
+                  onChange={(e) => setReplayId(e.target.value)}
+                  style={styles.input}
+                  onKeyPress={(e) => e.key === 'Enter' && handleReplayImport()}
+                />
+                <button
+                  onClick={handleReplayImport}
+                  style={{...styles.button, ...styles.buttonPrimary}}
+                >
+                  Import
+                </button>
               </div>
 
-              <details className="cursor-pointer group">
-                <summary className="text-sm text-gray-400 hover:text-gray-300 mb-2 font-medium">
-                  📦 Batch Import (click to expand)
+              <details>
+                <summary style={{color: '#9ca3af', cursor: 'pointer', marginBottom: '12px'}}>
+                  📦 Batch Import
                 </summary>
-                <div className="mt-2 space-y-2">
+                <div>
                   <textarea
                     placeholder="Enter replay IDs (one per line)"
                     value={batchReplayIds}
                     onChange={(e) => setBatchReplayIds(e.target.value)}
-                    className="w-full bg-slate-900/50 text-white px-4 py-3 rounded-xl border border-white/20 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 min-h-[100px] font-mono text-sm transition-all"
+                    style={{...styles.input, minHeight: '100px', fontFamily: 'monospace'}}
                   />
                   <button
                     onClick={handleBatchImport}
-                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 px-6 py-2 rounded-xl transition-all font-semibold shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
+                    style={{...styles.button, ...styles.buttonOrange, marginTop: '12px'}}
                   >
                     Batch Import
                   </button>
@@ -243,11 +349,20 @@ export default function RocketLeagueDashboard() {
               </details>
             </div>
             {uploadStatus && (
-              <div className={`px-4 py-3 rounded-xl font-semibold animate-fade-in ${
-                uploadStatus.includes('✓') ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 
-                uploadStatus.includes('⚠') ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' : 
-                'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-              }`}>
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '12px',
+                fontWeight: '600',
+                background: uploadStatus.includes('✓') ? 'rgba(34, 197, 94, 0.2)' :
+                           uploadStatus.includes('⚠') ? 'rgba(234, 179, 8, 0.2)' :
+                           'rgba(59, 130, 246, 0.2)',
+                color: uploadStatus.includes('✓') ? '#86efac' :
+                       uploadStatus.includes('⚠') ? '#fde047' : '#93c5fd',
+                border: '1px solid',
+                borderColor: uploadStatus.includes('✓') ? 'rgba(34, 197, 94, 0.3)' :
+                            uploadStatus.includes('⚠') ? 'rgba(234, 179, 8, 0.3)' :
+                            'rgba(59, 130, 246, 0.3)'
+              }}>
                 {uploadStatus}
               </div>
             )}
@@ -257,48 +372,48 @@ export default function RocketLeagueDashboard() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <>
-            {/* Stats Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            {/* Stats Cards */}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginBottom: '32px'}}>
               {[
-                { icon: Target, label: 'Total Matches', value: matches.length, color: 'from-blue-500 to-cyan-500', iconColor: 'text-cyan-300' },
-                { icon: Users, label: 'Total Players', value: players.length, color: 'from-purple-500 to-pink-500', iconColor: 'text-pink-300' },
-                { icon: TrendingUp, label: 'Avg Goals/Game', value: players.length > 0 ? (players.reduce((sum, p) => sum + parseFloat(p.avg_goals || 0), 0) / players.length).toFixed(2) : '0.00', color: 'from-green-500 to-emerald-500', iconColor: 'text-emerald-300' },
-                { icon: Trophy, label: 'Total MVPs', value: players.reduce((sum, p) => sum + parseInt(p.mvp_count || 0), 0), color: 'from-yellow-500 to-orange-500', iconColor: 'text-orange-300' }
+                { icon: Target, label: 'Total Matches', value: matches.length, gradient: 'linear-gradient(135deg, #3b82f6, #06b6d4)' },
+                { icon: Users, label: 'Total Players', value: players.length, gradient: 'linear-gradient(135deg, #8b5cf6, #ec4899)' },
+                { icon: TrendingUp, label: 'Avg Goals/Game', value: players.length > 0 ? (players.reduce((sum, p) => sum + parseFloat(p.avg_goals || 0), 0) / players.length).toFixed(2) : '0.00', gradient: 'linear-gradient(135deg, #10b981, #059669)' },
+                { icon: Trophy, label: 'Total MVPs', value: players.reduce((sum, p) => sum + parseInt(p.mvp_count || 0), 0), gradient: 'linear-gradient(135deg, #f59e0b, #f97316)' }
               ].map((stat, idx) => (
-                <div key={idx} className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl hover:scale-105 transition-all duration-300 hover:shadow-blue-500/20">
-                  <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${stat.color} mb-3 group-hover:scale-110 transition-transform`}>
-                    <stat.icon className={stat.iconColor} size={24} />
+                <div key={idx} style={styles.statCard} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                  <div style={{background: stat.gradient, padding: '12px', borderRadius: '12px', display: 'inline-block', marginBottom: '12px'}}>
+                    <stat.icon style={{color: 'white'}} size={24} />
                   </div>
-                  <div className="text-gray-400 text-sm font-medium mb-1">{stat.label}</div>
-                  <div className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">{stat.value}</div>
+                  <div style={{color: '#9ca3af', fontSize: '14px', marginBottom: '8px', fontWeight: '600'}}>{stat.label}</div>
+                  <div style={styles.statValue}>{stat.value}</div>
                 </div>
               ))}
             </div>
 
-            {/* Player Selection & Trends */}
+            {/* Player Selection */}
             {players.length > 0 && (
               <>
-                <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/10 shadow-2xl">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <Search className="text-gray-400" size={24} />
+                <div style={styles.card}>
+                  <div style={{display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
+                    <Search style={{color: '#9ca3af'}} size={24} />
                     <select
-                      className="flex-1 min-w-[300px] bg-slate-900/50 text-white px-4 py-3 rounded-xl border border-white/20 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 font-medium transition-all"
+                      style={{...styles.input, flex: 1, minWidth: '300px'}}
                       onChange={(e) => {
                         const player = players.find(p => p.player_id === parseInt(e.target.value));
                         setSelectedPlayer(player);
                       }}
                       value={selectedPlayer?.player_id || ''}
                     >
-                      <option value="">Select a player to view detailed stats</option>
+                      <option value="">Select a player to view stats</option>
                       {players.map(player => (
                         <option key={player.player_id} value={player.player_id}>
-                          {player.player_name} - {player.matches_played} matches • {player.total_goals} goals
+                          {player.player_name} - {player.matches_played} matches
                         </option>
                       ))}
                     </select>
                     
                     <select
-                      className="bg-slate-900/50 text-white px-4 py-3 rounded-xl border border-white/20 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 font-medium transition-all"
+                      style={styles.input}
                       value={filter.days}
                       onChange={(e) => setFilter({ ...filter, days: parseInt(e.target.value) })}
                     >
@@ -309,48 +424,28 @@ export default function RocketLeagueDashboard() {
                   </div>
                 </div>
 
-                {selectedPlayer && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    {/* Performance Trends */}
-                    {trends.length > 0 && (
-                      <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                          <TrendingUp className="text-blue-400" />
-                          Performance Trends - {selectedPlayer.player_name}
-                        </h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={trends}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="date" stroke="#9CA3AF" />
-                            <YAxis stroke="#9CA3AF" />
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', padding: '12px' }}
-                              labelStyle={{ color: '#9CA3AF', fontWeight: 'bold' }}
-                            />
-                            <Legend />
-                            <Line type="monotone" dataKey="avg_goals" stroke="#3B82F6" name="Goals" strokeWidth={3} dot={{ fill: '#3B82F6', r: 5 }} />
-                            <Line type="monotone" dataKey="avg_assists" stroke="#F59E0B" name="Assists" strokeWidth={3} dot={{ fill: '#F59E0B', r: 5 }} />
-                            <Line type="monotone" dataKey="avg_saves" stroke="#10B981" name="Saves" strokeWidth={3} dot={{ fill: '#10B981', r: 5 }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-
-                    {/* Player Radar Chart */}
-                    <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
-                      <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                        <Award className="text-purple-400" />
-                        Player Profile
-                      </h2>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <RadarChart data={getPlayerRadarData()}>
-                          <PolarGrid stroke="#374151" />
-                          <PolarAngleAxis dataKey="stat" stroke="#9CA3AF" />
-                          <PolarRadiusAxis stroke="#9CA3AF" />
-                          <Radar name={selectedPlayer.player_name} dataKey="value" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
+                {/* Performance Trends */}
+                {selectedPlayer && trends.length > 0 && (
+                  <div style={styles.card}>
+                    <h2 style={{fontSize: '24px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <TrendingUp style={{color: '#60a5fa'}} />
+                      Performance Trends - {selectedPlayer.player_name}
+                    </h2>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={trends}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="date" stroke="#9ca3af" />
+                        <YAxis stroke="#9ca3af" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', padding: '12px' }}
+                          labelStyle={{ color: '#9ca3af', fontWeight: 'bold' }}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="avg_goals" stroke="#3b82f6" name="Goals" strokeWidth={3} />
+                        <Line type="monotone" dataKey="avg_assists" stroke="#f59e0b" name="Assists" strokeWidth={3} />
+                        <Line type="monotone" dataKey="avg_saves" stroke="#10b981" name="Saves" strokeWidth={3} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </>
@@ -360,115 +455,127 @@ export default function RocketLeagueDashboard() {
 
         {/* Players Tab */}
         {activeTab === 'players' && (
-          <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
-            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-              <Trophy className="text-yellow-400" />
+          <div style={styles.card}>
+            <h2 style={{fontSize: '28px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+              <Trophy style={{color: '#fbbf24'}} />
               Top Players Leaderboard
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-700">
-                    <th className="text-left py-4 px-4 text-gray-400 font-bold">Rank</th>
-                    <th className="text-left py-4 px-4 text-gray-400 font-bold">Player</th>
-                    <th className="text-center py-4 px-4 text-gray-400 font-bold">Matches</th>
-                    <th className="text-center py-4 px-4 text-gray-400 font-bold">Goals</th>
-                    <th className="text-center py-4 px-4 text-gray-400 font-bold">Assists</th>
-                    <th className="text-center py-4 px-4 text-gray-400 font-bold">Saves</th>
-                    <th className="text-center py-4 px-4 text-gray-400 font-bold">MVPs</th>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.tableHeader}>Rank</th>
+                  <th style={styles.tableHeader}>Player</th>
+                  <th style={{...styles.tableHeader, textAlign: 'center'}}>Matches</th>
+                  <th style={{...styles.tableHeader, textAlign: 'center'}}>Goals</th>
+                  <th style={{...styles.tableHeader, textAlign: 'center'}}>Assists</th>
+                  <th style={{...styles.tableHeader, textAlign: 'center'}}>Saves</th>
+                  <th style={{...styles.tableHeader, textAlign: 'center'}}>MVPs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.slice(0, 10).map((player, idx) => (
+                  <tr 
+                    key={player.player_id} 
+                    style={styles.tableRow}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    onClick={() => { setSelectedPlayer(player); setActiveTab('overview'); }}
+                  >
+                    <td style={styles.tableCell}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: '900',
+                        background: idx === 0 ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
+                                   idx === 1 ? 'linear-gradient(135deg, #d1d5db, #9ca3af)' :
+                                   idx === 2 ? 'linear-gradient(135deg, #fb923c, #f97316)' : 'transparent',
+                        color: idx < 3 ? '#000' : '#6b7280'
+                      }}>
+                        {idx + 1}
+                      </div>
+                    </td>
+                    <td style={styles.tableCell}>
+                      <div style={{fontWeight: '700', fontSize: '16px'}}>{player.player_name}</div>
+                    </td>
+                    <td style={{...styles.tableCell, textAlign: 'center'}}>{player.matches_played}</td>
+                    <td style={{...styles.tableCell, textAlign: 'center'}}>
+                      <span style={{...styles.badge, background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd'}}>
+                        {player.total_goals}
+                      </span>
+                    </td>
+                    <td style={{...styles.tableCell, textAlign: 'center'}}>
+                      <span style={{...styles.badge, background: 'rgba(249, 115, 22, 0.2)', color: '#fdba74'}}>
+                        {player.total_assists}
+                      </span>
+                    </td>
+                    <td style={{...styles.tableCell, textAlign: 'center'}}>
+                      <span style={{...styles.badge, background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7'}}>
+                        {player.total_saves}
+                      </span>
+                    </td>
+                    <td style={{...styles.tableCell, textAlign: 'center'}}>
+                      <span style={{...styles.badge, background: 'rgba(251, 191, 36, 0.2)', color: '#fde047'}}>
+                        {player.mvp_count}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {players.slice(0, 10).map((player, idx) => (
-                    <tr 
-                      key={player.player_id} 
-                      className="border-b border-gray-700/50 hover:bg-white/5 cursor-pointer transition-all duration-200 group"
-                      onClick={() => { setSelectedPlayer(player); setActiveTab('overview'); }}
-                    >
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          {idx < 3 ? (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black ${
-                              idx === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900' :
-                              idx === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-gray-900' :
-                              'bg-gradient-to-br from-orange-400 to-orange-600 text-orange-900'
-                            }`}>
-                              {idx + 1}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500 font-bold w-8 text-center">#{idx + 1}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="font-bold text-lg group-hover:text-blue-400 transition-colors">{player.player_name}</div>
-                      </td>
-                      <td className="text-center py-4 px-4 font-semibold">{player.matches_played}</td>
-                      <td className="text-center py-4 px-4">
-                        <span className="inline-block px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 font-bold">
-                          {player.total_goals}
-                        </span>
-                      </td>
-                      <td className="text-center py-4 px-4">
-                        <span className="inline-block px-3 py-1 rounded-full bg-orange-500/20 text-orange-300 font-bold">
-                          {player.total_assists}
-                        </span>
-                      </td>
-                      <td className="text-center py-4 px-4">
-                        <span className="inline-block px-3 py-1 rounded-full bg-green-500/20 text-green-300 font-bold">
-                          {player.total_saves}
-                        </span>
-                      </td>
-                      <td className="text-center py-4 px-4">
-                        <span className="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 font-bold">
-                          {player.mvp_count}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
         {/* Matches Tab */}
         {activeTab === 'matches' && (
-          <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
-            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-              <Calendar className="text-green-400" />
+          <div style={styles.card}>
+            <h2 style={{fontSize: '28px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+              <Calendar style={{color: '#10b981'}} />
               Recent Matches
             </h2>
-            <div className="space-y-4">
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
               {matches.slice(0, 10).map(match => (
-                <div key={match.match_id} className="bg-slate-900/50 rounded-xl p-5 hover:bg-slate-800/50 transition-all duration-200 border border-white/5 hover:border-white/10 group">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="font-bold text-lg mb-2 group-hover:text-blue-400 transition-colors">
+                <div key={match.match_id} style={{
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)'}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div>
+                      <div style={{fontWeight: '700', fontSize: '18px', marginBottom: '8px'}}>
                         {match.map_name || 'Unknown Map'}
                       </div>
-                      <div className="text-sm text-gray-400 flex items-center gap-4">
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          {new Date(match.match_date).toLocaleDateString()}
-                        </span>
-                        <span>{match.game_mode || 'Standard'}</span>
+                      <div style={{color: '#9ca3af', fontSize: '14px'}}>
+                        {new Date(match.match_date).toLocaleDateString()} • {match.game_mode || 'Standard'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
-                        match.winning_team === 'blue' 
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30' 
-                          : 'bg-blue-900/30'
-                      }`}>
+                    <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                      <div style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontWeight: '700',
+                        fontSize: '18px',
+                        background: match.winning_team === 'blue' ? 'linear-gradient(to right, #3b82f6, #2563eb)' : 'rgba(59, 130, 246, 0.3)',
+                        boxShadow: match.winning_team === 'blue' ? '0 4px 15px rgba(59, 130, 246, 0.3)' : 'none'
+                      }}>
                         Blue {match.blue_score}
                       </div>
-                      <span className="text-gray-500 font-bold">VS</span>
-                      <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
-                        match.winning_team === 'orange' 
-                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30' 
-                          : 'bg-orange-900/30'
-                      }`}>
+                      <span style={{color: '#6b7280', fontWeight: '700'}}>VS</span>
+                      <div style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontWeight: '700',
+                        fontSize: '18px',
+                        background: match.winning_team === 'orange' ? 'linear-gradient(to right, #f97316, #dc2626)' : 'rgba(249, 115, 22, 0.3)',
+                        boxShadow: match.winning_team === 'orange' ? '0 4px 15px rgba(249, 115, 22, 0.3)' : 'none'
+                      }}>
                         {match.orange_score} Orange
                       </div>
                     </div>
@@ -479,30 +586,6 @@ export default function RocketLeagueDashboard() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes blob {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
