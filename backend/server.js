@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 
+const analysisRoutes = require('./routes/analysis');
+
 const path = require('path');
 
 const app = express();
@@ -430,6 +432,9 @@ app.get('/api/players/search/:name', async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+app.use('/api/analysis', analysisRoutes);
+
 
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
