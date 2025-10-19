@@ -12,13 +12,13 @@ const port = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    /^https:\/\/rocket-league-replay-tracker.*\.vercel\.app$/  // Allow all your Vercel deployments
+    /^https:\/\/rocket-league-replay-tracker.*\.vercel\.app$/  
   ],
   credentials: true
 }));
 app.use(express.json());
 
-// PostgreSQL connection pool (Tembo compatible)
+// PostgreSQL connection pool 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20, // Maximum connections in pool
@@ -27,7 +27,7 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Path to your compiled C++ executable
+
 const CPP_PARSER_PATH = './replay_parser'; // Adjust path as needed
 
 // ============ UTILITY FUNCTIONS ============
@@ -51,7 +51,7 @@ async function parseReplayFromBallChasing(replayId) {
       throw new Error(`Replay status: ${data.status}`);
     }
 
-    // Transform to our format
+    // Transform to format
     const formatted = {
       replay_id: replayId,
       title: data.title || 'Unknown',
