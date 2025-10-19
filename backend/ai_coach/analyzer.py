@@ -106,7 +106,6 @@ class RLStatsAnalyzer:
             if stat in player_stats:
                 player_value = player_stats[stat]
                 # Calculate percentile (50 = exactly at benchmark)
-                # This is simplified - you'd refine with actual data distribution
                 percentile = (player_value / benchmark) * 50 if benchmark != 0 else 50
                 percentiles[stat] = round(min(max(percentile, 0), 100), 1)
         
