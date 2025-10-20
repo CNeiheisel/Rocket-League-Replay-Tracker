@@ -288,22 +288,23 @@ export default function RocketLeagueDashboard() {
         </div>
 
         {/* Tabs */}
+{/* Tabs */}
 <div style={{textAlign: 'center', marginBottom: '32px'}}>
-  {['overview', 'players', 'matches', 'ai-coach'].map(tab => (
+  {['overview', 'players', 'matches'].map(tab => (
     <button
       key={tab}
-      onClick={() => {
-        if (tab === 'ai-coach') {
-          window.location.href = '/ai-coach';
-        } else {
-          setActiveTab(tab);
-        }
-      }}
+      onClick={() => setActiveTab(tab)}
       style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive)}}
     >
-      {tab === 'ai-coach' ? 'AI Coach' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+      {tab.charAt(0).toUpperCase() + tab.slice(1)}
     </button>
   ))}
+  <button
+    onClick={() => window.location.href = '/ai-coach'}
+    style={{...styles.tab, ...styles.tabInactive}}
+  >
+    AI Coach
+  </button>
 </div>
 
         {/* Import Section */}
