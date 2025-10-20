@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar, Brain } from 'lucide-react';
+import AICoach from '../pages/ai-coach';
 
 const API_URL = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL 
   ? process.env.REACT_APP_API_URL 
@@ -302,7 +303,10 @@ export default function RocketLeagueDashboard() {
             onClick={() => setActiveTab('aicoach')}
             style={{...styles.tab, ...(activeTab === 'aicoach' ? styles.tabActive : styles.tabInactive), marginRight: 0}}
           >
-            AI Coach
+            <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <Brain size={18} />
+              AI Coach
+            </span>
           </button>
         </div>
 
@@ -594,10 +598,7 @@ export default function RocketLeagueDashboard() {
 
         {/* AI Coach Tab */}
         {activeTab === 'aicoach' && (
-          <div style={styles.card}>
-            <h2 style={{fontSize: '28px', fontWeight: '700', marginBottom: '24px'}}>Test: AI Coach Tab</h2>
-            <p style={{color: '#d1d5db'}}>If you see this, the button and tab switching work. The import issue can now be debugged.</p>
-          </div>
+          <AICoach players={players} matches={matches} />
         )}
       </div>
     </div>
