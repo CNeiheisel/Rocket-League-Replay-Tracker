@@ -139,32 +139,7 @@ const styles = {
   }
 };
 
-{/* AI Coach Tab */}
-{activeTab === 'aicoach' && (
-  <AICoach players={players} matches={matches} />
-)}
-  <div style={styles.card}>
-    <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'}}>
-      <Brain style={{color: '#a78bfa'}} size={32} />
-      <h2 style={{fontSize: '28px', fontWeight: '700'}}>AI Coach</h2>
-    </div>
-    <div style={{
-      background: 'rgba(167, 139, 250, 0.1)',
-      border: '2px solid rgba(167, 139, 250, 0.3)',
-      borderRadius: '12px',
-      padding: '32px',
-      textAlign: 'center'
-    }}>
-      <Brain style={{color: '#a78bfa', margin: '0 auto 16px'}} size={48} />
-      <p style={{fontSize: '18px', color: '#d1d5db', marginBottom: '12px'}}>
-        AI Coach Component Loading...
-      </p>
-      <p style={{color: '#9ca3af', fontSize: '14px'}}>
-        Make sure your AICoachPage component is properly imported
-      </p>
-    </div>
-  </div>
-);
+
 
 export default function RocketLeagueDashboard() {
   const [matches, setMatches] = useState([]);
@@ -316,12 +291,12 @@ export default function RocketLeagueDashboard() {
         </div>
 
         {/* Tabs */}
-        <div style={{textAlign: 'center', marginBottom: '32px'}}>
+        <div style={{textAlign: 'center', marginBottom: '32px', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap'}}>
           {['overview', 'players', 'matches', 'aicoach'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive)}}
+              style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive), marginRight: 0}}
             >
               {tab === 'aicoach' ? (
                 <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -623,7 +598,7 @@ export default function RocketLeagueDashboard() {
 
         {/* AI Coach Tab */}
         {activeTab === 'aicoach' && (
-          <AICoachPlaceholder />
+          <AICoach players={players} matches={matches} />
         )}
       </div>
     </div>
