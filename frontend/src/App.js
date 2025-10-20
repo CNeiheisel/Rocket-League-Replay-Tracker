@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar, Brain } from 'lucide-react';
+import AICoach from './pages/ai-coach';
 
 const API_URL = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL 
   ? process.env.REACT_APP_API_URL 
@@ -138,8 +139,10 @@ const styles = {
   }
 };
 
-// Placeholder AI Coach Component
-const AICoachPlaceholder = () => (
+{/* AI Coach Tab */}
+{activeTab === 'aicoach' && (
+  <AICoach players={players} matches={matches} />
+)}
   <div style={styles.card}>
     <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'}}>
       <Brain style={{color: '#a78bfa'}} size={32} />
