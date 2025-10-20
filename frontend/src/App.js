@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar, Brain } from 'lucide-react';
-import AICoach from './pages/ai-coach.jsx';
+import AICoach from './pages/ai-coach';
 
 const API_URL = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL 
   ? process.env.REACT_APP_API_URL 
