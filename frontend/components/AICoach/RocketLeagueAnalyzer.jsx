@@ -2,6 +2,146 @@ import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { TrendingUp, Target, Award, AlertCircle } from 'lucide-react';
 
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: 'linear-gradient(to bottom right, #0f172a, #1e3a8a, #0f172a)',
+    padding: '24px',
+    color: 'white',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
+  maxWidth: {
+    maxWidth: '1280px',
+    margin: '0 auto'
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '32px'
+  },
+  headerTitle: {
+    fontSize: '48px',
+    fontWeight: '900',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px'
+  },
+  headerSubtitle: {
+    color: '#93c5fd',
+    fontSize: '18px'
+  },
+  card: {
+    background: 'rgba(30, 41, 59, 0.8)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '16px',
+    padding: '24px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    marginBottom: '24px'
+  },
+  input: {
+    padding: '12px 16px',
+    borderRadius: '12px',
+    border: '1px solid rgba(59, 130, 246, 0.5)',
+    background: 'rgba(15, 23, 42, 0.7)',
+    color: 'white',
+    fontSize: '16px',
+    width: '100%'
+  },
+  button: {
+    width: '100%',
+    padding: '16px 24px',
+    background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: '16px',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
+    boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+    marginTop: '16px'
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed'
+  },
+  grid2: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '600',
+    marginBottom: '8px',
+    display: 'block',
+    color: '#e5e7eb'
+  },
+  assessmentCard: {
+    background: 'rgba(34, 197, 94, 0.15)',
+    border: '1px solid rgba(34, 197, 94, 0.3)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '24px',
+    display: 'flex',
+    gap: '16px'
+  },
+  assessmentText: {
+    color: '#d1fae5',
+    fontSize: '18px',
+    lineHeight: '1.6'
+  },
+  adviceContainer: {
+    marginTop: '32px'
+  },
+  adviceTitle: {
+    fontSize: '28px',
+    fontWeight: '700',
+    marginBottom: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  adviceCard: {
+    background: 'rgba(30, 41, 59, 0.8)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '16px',
+    display: 'flex',
+    gap: '16px'
+  },
+  priorityBadge: {
+    width: '40px',
+    height: '40px',
+    minWidth: '40px',
+    background: 'linear-gradient(to right, #3b82f6, #2563eb)',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    fontSize: '18px'
+  },
+  chartCard: {
+    background: 'rgba(30, 41, 59, 0.8)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '24px'
+  },
+  gapInfo: {
+    background: 'rgba(15, 23, 42, 0.5)',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    marginTop: '12px',
+    fontSize: '14px'
+  }
+};
+
 const RocketLeagueAnalyzer = () => {
   const [playerStats, setPlayerStats] = useState({
     score: 450,
@@ -26,10 +166,9 @@ const RocketLeagueAnalyzer = () => {
     setLoading(true);
     
     try {
-      // Use your actual backend URL
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.REACT_APP_API_URL || 'https://rocket-league-replay-tracker.onrender.com/api';
       
-      const response = await fetch(`${backendUrl}/api/analysis/analyze`, {
+      const response = await fetch(`${backendUrl}/analysis/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,30 +202,30 @@ const RocketLeagueAnalyzer = () => {
   })) : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div style={styles.container}>
+      <div style={styles.maxWidth}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-            <Award className="text-yellow-400" size={48} />
+        <div style={styles.header}>
+          <div style={styles.headerTitle}>
+            <Award size={48} style={{color: '#fbbf24'}} />
             Rocket League AI Coach
-          </h1>
-          <p className="text-blue-200 text-lg">AI-Powered Performance Analysis & Training Recommendations</p>
+          </div>
+          <p style={styles.headerSubtitle}>AI-Powered Performance Analysis & Training Recommendations</p>
         </div>
 
         {/* Input Section */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <Target size={24} className="text-blue-400" />
+        <div style={styles.card}>
+          <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+            <Target size={24} style={{color: '#60a5fa'}} />
             Player Stats Input
           </h2>
           
-          <div className="mb-4">
-            <label className="text-white font-semibold mb-2 block">Current Rank</label>
+          <div style={{marginBottom: '16px'}}>
+            <label style={styles.label}>Current Rank</label>
             <select 
               value={currentRank} 
               onChange={(e) => setCurrentRank(e.target.value)}
-              className="w-full p-3 rounded-lg bg-slate-800 text-white border border-blue-500/50 focus:border-blue-400 outline-none"
+              style={styles.input}
             >
               {ranks.map(rank => (
                 <option key={rank} value={rank}>{rank}</option>
@@ -94,10 +233,10 @@ const RocketLeagueAnalyzer = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          <div style={styles.grid2}>
             {Object.keys(playerStats).map(stat => (
               <div key={stat}>
-                <label className="text-white text-sm font-semibold mb-1 block capitalize">
+                <label style={styles.label}>
                   {stat.replace(/_/g, ' ')}
                 </label>
                 <input
@@ -105,7 +244,7 @@ const RocketLeagueAnalyzer = () => {
                   step="0.1"
                   value={playerStats[stat]}
                   onChange={(e) => handleStatChange(stat, e.target.value)}
-                  className="w-full p-2 rounded-lg bg-slate-800 text-white border border-blue-500/50 focus:border-blue-400 outline-none"
+                  style={styles.input}
                 />
               </div>
             ))}
@@ -114,7 +253,7 @@ const RocketLeagueAnalyzer = () => {
           <button
             onClick={analyzePlayer}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            style={{...styles.button, ...(loading ? styles.buttonDisabled : {})}}
           >
             {loading ? 'Analyzing...' : 'Analyze Performance'}
           </button>
@@ -122,103 +261,94 @@ const RocketLeagueAnalyzer = () => {
 
         {/* Analysis Results */}
         {analysis && analysis.success && (
-          <div className="space-y-6">
+          <div>
             {/* Overall Assessment */}
-            <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-md rounded-2xl p-6 border border-green-500/30">
-              <div className="flex items-start gap-4">
-                <TrendingUp className="text-green-400 flex-shrink-0" size={32} />
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Overall Assessment</h3>
-                  <p className="text-green-100 text-lg">{analysis.overall_assessment}</p>
-                </div>
+            <div style={styles.assessmentCard}>
+              <div>
+                <TrendingUp size={32} style={{color: '#22c55e', marginTop: '4px'}} />
+              </div>
+              <div>
+                <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: 'white'}}>Overall Assessment</h3>
+                <p style={styles.assessmentText}>{analysis.overall_assessment}</p>
               </div>
             </div>
 
-            {/* Visualizations */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Radar Chart */}
-              {radarData.length > 0 && (
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                  <h3 className="text-xl font-bold text-white mb-4">Performance Percentiles</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid stroke="#ffffff40" />
-                      <PolarAngleAxis dataKey="stat" stroke="#ffffff" tick={{ fill: '#fff', fontSize: 12 }} />
-                      <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="#ffffff40" tick={{ fill: '#fff' }} />
-                      <Radar name="Your Stats" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                  <p className="text-blue-200 text-sm text-center mt-2">50th percentile = average for your rank</p>
-                </div>
-              )}
+            {/* Radar Chart */}
+            {radarData.length > 0 && (
+              <div style={styles.chartCard}>
+                <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: 'white'}}>Performance Percentiles</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#ffffff40" />
+                    <PolarAngleAxis dataKey="stat" stroke="#ffffff" tick={{ fill: '#fff', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="#ffffff40" tick={{ fill: '#fff' }} />
+                    <Radar name="Your Stats" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                  </RadarChart>
+                </ResponsiveContainer>
+                <p style={{color: '#93c5fd', fontSize: '14px', textAlign: 'center', marginTop: '12px'}}>50th percentile = average for your rank</p>
+              </div>
+            )}
 
-              {/* Top Gaps */}
-              {analysis.all_gaps && (
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                  <h3 className="text-xl font-bold text-white mb-4">Biggest Improvement Areas</h3>
-                  <div className="space-y-3">
-                    {analysis.all_gaps.slice(0, 5).map((gap, idx) => (
-                      <div key={idx} className="bg-slate-800/50 rounded-lg p-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-white font-semibold capitalize">{gap.stat.replace(/_/g, ' ')}</span>
-                          <span className={`text-sm font-bold ${gap.gap > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                            {gap.gap > 0 ? '-' : '+'}{Math.abs(gap.gap_percentage).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="flex gap-2 text-sm">
-                          <span className="text-blue-300">You: {gap.player_value}</span>
-                          <span className="text-gray-400">|</span>
-                          <span className="text-green-300">Target: {gap.target_value}</span>
-                        </div>
+            {/* Top Gaps */}
+            {analysis.all_gaps && (
+              <div style={styles.chartCard}>
+                <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: 'white'}}>Biggest Improvement Areas</h3>
+                <div>
+                  {analysis.all_gaps.slice(0, 5).map((gap, idx) => (
+                    <div key={idx} style={{background: 'rgba(15, 23, 42, 0.5)', borderRadius: '8px', padding: '16px', marginBottom: '12px'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <span style={{color: 'white', fontWeight: 'bold'}}>{gap.stat.replace(/_/g, ' ')}</span>
+                        <span style={{color: gap.gap > 0 ? '#f87171' : '#86efac', fontWeight: 'bold', fontSize: '14px'}}>
+                          {gap.gap > 0 ? '-' : '+'}{Math.abs(gap.gap_percentage).toFixed(1)}%
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{display: 'flex', gap: '8px', fontSize: '14px'}}>
+                        <span style={{color: '#93c5fd'}}>You: {gap.player_value}</span>
+                        <span style={{color: '#6b7280'}}>|</span>
+                        <span style={{color: '#86efac'}}>Target: {gap.target_value}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Priority Advice */}
-            <div className="space-y-4">
-              <h2 className="text-3xl font-bold text-white flex items-center gap-2">
-                <AlertCircle className="text-yellow-400" size={32} />
+            <div style={styles.adviceContainer}>
+              <h2 style={styles.adviceTitle}>
+                <AlertCircle size={32} style={{color: '#fbbf24'}} />
                 Priority Training Focus
               </h2>
               
               {analysis.advice.map((item, idx) => (
-                <div key={idx} className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-blue-400/50 transition-all">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
-                      {item.priority}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-bold text-white mb-2">{item.title}</h3>
-                      <p className="text-blue-100 mb-4 leading-relaxed">{item.advice}</p>
-                      
-                      {/* Gap Info */}
-                      {item.gap_info && (
-                        <div className="bg-slate-900/50 rounded px-3 py-2 mb-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-blue-300">Your stat: <strong>{item.gap_info.player_value}</strong></span>
-                            <span className="text-green-300">Target: <strong>{item.gap_info.target_value}</strong></span>
-                          </div>
+                <div key={idx} style={styles.adviceCard}>
+                  <div style={styles.priorityBadge}>{item.priority}</div>
+                  <div style={{flex: 1}}>
+                    <h3 style={{fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '12px'}}>{item.title}</h3>
+                    <p style={{color: '#bfdbfe', marginBottom: '16px', lineHeight: '1.6'}}>{item.advice}</p>
+                    
+                    {item.gap_info && (
+                      <div style={styles.gapInfo}>
+                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                          <span style={{color: '#93c5fd'}}>Your stat: <strong>{item.gap_info.player_value}</strong></span>
+                          <span style={{color: '#86efac'}}>Target: <strong>{item.gap_info.target_value}</strong></span>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Training Drills */}
-                      {item.drills && item.drills.length > 0 && (
-                        <div className="bg-slate-800/50 rounded-lg p-4">
-                          <h4 className="text-white font-semibold mb-2">Recommended Training:</h4>
-                          <ul className="space-y-1">
-                            {item.drills.map((drill, dIdx) => (
-                              <li key={dIdx} className="text-blue-200 flex items-center gap-2">
-                                <span className="text-blue-400">•</span>
-                                {drill}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
+                    {item.drills && item.drills.length > 0 && (
+                      <div style={{background: 'rgba(15, 23, 42, 0.7)', borderRadius: '8px', padding: '16px', marginTop: '12px'}}>
+                        <h4 style={{color: 'white', fontWeight: 'bold', marginBottom: '12px'}}>Recommended Training:</h4>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                          {item.drills.map((drill, dIdx) => (
+                            <li key={dIdx} style={{color: '#93c5fd', marginBottom: '8px', display: 'flex', gap: '8px'}}>
+                              <span style={{color: '#60a5fa'}}>•</span>
+                              {drill}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
