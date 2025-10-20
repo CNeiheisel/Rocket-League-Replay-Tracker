@@ -292,22 +292,24 @@ export default function RocketLeagueDashboard() {
 
         {/* Tabs */}
         <div style={{textAlign: 'center', marginBottom: '32px', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap'}}>
-          {['overview', 'players', 'matches', 'aicoach'].map(tab => (
+          {['overview', 'players', 'matches'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive), marginRight: 0}}
             >
-              {tab === 'aicoach' ? (
-                <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <Brain size={18} />
-                  AI Coach
-                </span>
-              ) : (
-                tab.charAt(0).toUpperCase() + tab.slice(1)
-              )}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
+          <button
+            onClick={() => setActiveTab('aicoach')}
+            style={{...styles.tab, ...(activeTab === 'aicoach' ? styles.tabActive : styles.tabInactive), marginRight: 0}}
+          >
+            <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <Brain size={18} />
+              AI Coach
+            </span>
+          </button>
         </div>
 
         {/* Import Section */}
