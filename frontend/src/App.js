@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar } from 'lucide-react';
+import { Upload, TrendingUp, Award, Target, Search, Zap, Users, Trophy, Calendar, Brain } from 'lucide-react';
 
 const API_URL = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL 
   ? process.env.REACT_APP_API_URL 
@@ -137,6 +137,31 @@ const styles = {
     color: 'white'
   }
 };
+
+// Placeholder AI Coach Component
+const AICoachPlaceholder = () => (
+  <div style={styles.card}>
+    <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'}}>
+      <Brain style={{color: '#a78bfa'}} size={32} />
+      <h2 style={{fontSize: '28px', fontWeight: '700'}}>AI Coach</h2>
+    </div>
+    <div style={{
+      background: 'rgba(167, 139, 250, 0.1)',
+      border: '2px solid rgba(167, 139, 250, 0.3)',
+      borderRadius: '12px',
+      padding: '32px',
+      textAlign: 'center'
+    }}>
+      <Brain style={{color: '#a78bfa', margin: '0 auto 16px'}} size={48} />
+      <p style={{fontSize: '18px', color: '#d1d5db', marginBottom: '12px'}}>
+        AI Coach Component Loading...
+      </p>
+      <p style={{color: '#9ca3af', fontSize: '14px'}}>
+        Make sure your AICoachPage component is properly imported
+      </p>
+    </div>
+  </div>
+);
 
 export default function RocketLeagueDashboard() {
   const [matches, setMatches] = useState([]);
@@ -288,24 +313,24 @@ export default function RocketLeagueDashboard() {
         </div>
 
         {/* Tabs */}
-{/* Tabs */}
-<div style={{textAlign: 'center', marginBottom: '32px'}}>
-  {['overview', 'players', 'matches'].map(tab => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab)}
-      style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive)}}
-    >
-      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-    </button>
-  ))}
-  <button
-    onClick={() => window.location.href = '/ai-coach'}
-    style={{...styles.tab, ...styles.tabInactive}}
-  >
-    AI Coach
-  </button>
-</div>
+        <div style={{textAlign: 'center', marginBottom: '32px'}}>
+          {['overview', 'players', 'matches', 'aicoach'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : styles.tabInactive)}}
+            >
+              {tab === 'aicoach' ? (
+                <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                  <Brain size={18} />
+                  AI Coach
+                </span>
+              ) : (
+                tab.charAt(0).toUpperCase() + tab.slice(1)
+              )}
+            </button>
+          ))}
+        </div>
 
         {/* Import Section */}
         <div style={styles.card}>
@@ -591,6 +616,11 @@ export default function RocketLeagueDashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* AI Coach Tab */}
+        {activeTab === 'aicoach' && (
+          <AICoachPlaceholder />
         )}
       </div>
     </div>
