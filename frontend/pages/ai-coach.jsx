@@ -1,5 +1,5 @@
 import React from 'react';
-import RocketLeagueAnalyzer from '../components/AICoach/RocketLeagueAnalyzer';
+import RocketLeagueAnalyzer from '../src/components/AICoach/RocketLeagueAnalyzer';
 
 export default function AICoachPage() {
   return <RocketLeagueAnalyzer />;
