@@ -57,7 +57,7 @@ public:
         return readBuffer;
     }
 
-    // New method: Convert replay data to structured JSON
+    //Convert replay data to structured JSON
     json getReplayStructured(const std::string &replay_id)
     {
         std::string response = getReplay(replay_id);
