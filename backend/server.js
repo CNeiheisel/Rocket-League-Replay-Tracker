@@ -10,6 +10,20 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Load environment variables from .env file
+require('dotenv').config();
+
+// Access your Ballchasing API key
+const BALLCHASING_API_KEY = process.env.BALLCHASING_API_KEY;
+
+if (!BALLCHASING_API_KEY) {
+  console.error("❌ ERROR: BALLCHASING_API_KEY is not set in .env");
+  process.exit(1);
+}
+
+console.log("🔐 API key loaded successfully!");
+
+
 // Middleware
 app.use(cors({
   origin: [
@@ -39,7 +53,7 @@ async function parseReplayFromBallChasing(replayId) {
   try {
     const response = await fetch(`https://ballchasing.com/api/replays/${replayId}`, {
       headers: {
-        'Authorization': 'iKoZM4PZP3A2lv7iPLI71ymE9fg94YBdC8xFZFIq'
+        'Authorization': BALLCHASING_API_KEY
       }
     });
 
