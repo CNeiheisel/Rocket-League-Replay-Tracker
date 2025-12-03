@@ -13,15 +13,7 @@ const port = process.env.PORT || 5000;
 // Load environment variables from .env file
 require('dotenv').config();
 
-// Access your Ballchasing API key
-const BALLCHASING_API_KEY = process.env.BALLCHASING_API_KEY;
 
-if (!BALLCHASING_API_KEY) {
-  console.error("❌ ERROR: BALLCHASING_API_KEY is not set in .env");
-  process.exit(1);
-}
-
-console.log("🔐 API key loaded successfully!");
 
 
 // Middleware
@@ -47,6 +39,37 @@ const pool = new Pool({
 const CPP_PARSER_PATH = './replay_parser'; // Adjust path as needed
 
 // ============ UTILITY FUNCTIONS ============
+
+// Access Ballchasing API key
+const BALLCHASING_API_KEY = process.env.BALLCHASING_API_KEY;
+
+if (!BALLCHASING_API_KEY) {
+  console.error("ERROR: BALLCHASING_API_KEY is not set in .env");
+  process.exit(1);
+}
+
+console.log("API key loaded successfully!");
+
+app.get('/api/ballchasing/matches', async (req, res) => {
+  const limit = req.query.limit || 20;
+
+  try {
+    const response = await fetch(`https://ballchasing.com/api/replays?limit=${limit}`, {
+      headers: { Authorization: BALLCHASING_API_KEY }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ballchasing API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    res.json(data.list || []); // Ballchasing wraps results in "list"
+    
+  } catch (err) {
+    console.error("Error fetching matches:", err);
+    res.status(500).json({ error: "Failed to fetch matches" });
+  }
+});
 
 // Parse replay using C++ + BallChasing API
 async function parseReplayFromBallChasing(replayId) {
