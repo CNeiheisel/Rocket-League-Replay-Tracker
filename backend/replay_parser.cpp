@@ -225,8 +225,14 @@ private:
 
 int main(int argc, char *argv[])
 {
-    // Your API key
-    std::string api_key = "iKoZM4PZP3A2lv7iPLI71ymE9fg94YBdC8xFZFIq";
+    // API key
+    const char* key = std::getenv("BALLCHASING_API_KEY");
+    if (!key) {
+        std::cerr << "Missing API key: BALLCHASING_API_KEY is not set!" << std::endl;
+        return 1;
+    }
+    std::string api_key = key;
+
 
     // Initialize the API client
     BallChasingAPI api(api_key);
