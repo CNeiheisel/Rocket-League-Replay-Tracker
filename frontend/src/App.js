@@ -164,7 +164,7 @@ export default function RocketLeagueDashboard() {
 
   const fetchMatches = async () => {
     try {
-      const response = await fetch(`${API_URL}/matches?limit=20`);
+      const response = await fetch(`${API_URL}/ballchasing/matches?limit=20`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       setMatches(Array.isArray(data) ? data : []);
