@@ -1,0 +1,19 @@
+.header-title {
+  line-height: 1.05;
+}
+
+@media (max-width: 768px) {
+  .header-title {
+    font-size: 2.5rem;
+  }
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.badge-blue { background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
+.badge-orange { background: rgba(249, 115, 22, 0.12); color: #fdba74; }
