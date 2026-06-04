@@ -46,7 +46,7 @@ const poolConfig = process.env.DATABASE_URL ? {
 
 const implicitSsl = process.env.DATABASE_URL && /neon\./i.test(process.env.DATABASE_URL);
 const useSsl = process.env.DB_SSL === 'true' || process.env.PGSSLMODE === 'require' || implicitSsl || process.env.NODE_ENV === 'production';
-const sslConfig = useSsl ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : false;
+const sslConfig = useSsl ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true' } : false;
 
 console.log('Postgres configuration:', {
   source: process.env.DATABASE_URL ? 'DATABASE_URL' : 'env vars/defaults',
@@ -54,7 +54,8 @@ console.log('Postgres configuration:', {
   port: poolConfig.port,
   user: poolConfig.user,
   database: poolConfig.database,
-  ssl: Boolean(sslConfig)
+  ssl: Boolean(sslConfig),
+  sslRejectUnauthorized: sslConfig.rejectUnauthorized
 });
 
 const pool = new Pool({
@@ -63,6 +64,10 @@ const pool = new Pool({
   idleTimeoutMillis: 30000, // Close idle clients after 30s
   connectionTimeoutMillis: 2000, // Return error after 2s
   ssl: sslConfig
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected Postgres client error', err);
 });
 
 
