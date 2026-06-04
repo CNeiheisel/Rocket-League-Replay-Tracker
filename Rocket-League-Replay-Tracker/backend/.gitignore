@@ -1,0 +1,4 @@
+node_modules/
+.env
+replay_parser
+replay_parser.exe

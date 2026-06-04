@@ -1,0 +1,132 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(73, 210, 255, 0.26);
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  right: -120px;
+  top: -140px;
+  background: radial-gradient(circle, rgba(255, 110, 42, 0.22), transparent 70%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.hero-title {
+  margin: 8px 0;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  line-height: 1.05;
+  max-width: 16ch;
+}
+
+.hero-subtitle {
+  margin: 0;
+  color: var(--text-soft);
+  max-width: 56ch;
+}
+
+.start-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.2rem;
+}
+
+.section-title {
+  margin: 0;
+}
+
+.section-copy {
+  margin: 0.4rem 0 1rem;
+  color: var(--text-soft);
+}
+
+.single-import-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.batch-box {
+  border: 1px solid var(--border-color);
+  border-radius: 0.9rem;
+  padding: 0.8rem;
+  background: rgba(7, 17, 36, 0.48);
+}
+
+.batch-box summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.7rem;
+}
+
+.batch-box .textarea-field {
+  margin-bottom: 0.7rem;
+}
+
+.status-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: rgba(5, 13, 28, 0.74);
+  align-self: start;
+}
+
+.status-title {
+  margin: 0 0 0.6rem;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-message {
+  margin: 0;
+  font-weight: 600;
+}
+
+.status-success {
+  color: #87f0a8;
+}
+
+.status-warning {
+  color: #ffd365;
+}
+
+.status-error {
+  color: #ff9b9f;
+}
+
+.status-info {
+  color: #8bd8ff;
+}
+
+@media (max-width: 960px) {
+  .start-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .single-import-row {
+    grid-template-columns: 1fr;
+  }
+}

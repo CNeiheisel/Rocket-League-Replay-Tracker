@@ -1,0 +1,132 @@
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.matches-grid {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.match-card {
+  background: rgba(6, 18, 40, 0.82);
+}
+
+.match-top-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.match-top-row h3 {
+  margin: 0;
+}
+
+.match-top-row p {
+  margin: 0.3rem 0 0;
+  color: var(--text-soft);
+}
+
+.scoreboard {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.score-chip {
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  border: 1px solid transparent;
+}
+
+.score-blue {
+  background: rgba(46, 143, 255, 0.18);
+  color: #9ad9ff;
+}
+
+.score-orange {
+  background: rgba(255, 138, 62, 0.18);
+  color: #ffc28c;
+}
+
+.score-chip.winner {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.versus {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.team-grid {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.team-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.9rem;
+}
+
+.team-label.blue {
+  color: #8bd8ff;
+}
+
+.team-label.orange {
+  color: #ffbd86;
+}
+
+.pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.player-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.3rem 0.68rem;
+  font-size: 0.83rem;
+  border: 1px solid transparent;
+}
+
+.player-pill.blue {
+  background: rgba(46, 143, 255, 0.12);
+  border-color: rgba(46, 143, 255, 0.28);
+}
+
+.player-pill.orange {
+  background: rgba(255, 138, 62, 0.12);
+  border-color: rgba(255, 138, 62, 0.28);
+}
+
+.no-team-data,
+.empty {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+@media (max-width: 740px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}

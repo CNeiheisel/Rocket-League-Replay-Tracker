@@ -1,0 +1,42 @@
+<section class="hero card">
+  <div class="hero-content">
+    <p class="kicker">Michigan State University Varsity Team</p>
+    <h1 class="hero-title">Rocket League Replay Tracker</h1>
+    <p class="hero-subtitle">Track player performance, ingest replay data, and unlock actionable coaching insights.</p>
+  </div>
+</section>
+
+<section class="card start-layout">
+  <div>
+    <h2 class="section-title">Import Replays</h2>
+    <p class="section-copy">Paste a Ballchasing replay ID to import a single game or use batch mode for multiple IDs.</p>
+
+    <div class="single-import-row">
+      <input
+        class="input-field"
+        type="text"
+        [ngModel]="replayId"
+        (ngModelChange)="onReplayIdChanged($event)"
+        placeholder="Enter replay ID"
+      />
+      <button class="button-primary" type="button" (click)="requestReplayImport()">Import Replay</button>
+    </div>
+
+    <details class="batch-box">
+      <summary>Batch Import</summary>
+      <textarea
+        class="textarea-field"
+        rows="5"
+        [ngModel]="batchReplayIds"
+        (ngModelChange)="onBatchReplayIdsChanged($event)"
+        placeholder="Enter one replay ID per line"
+      ></textarea>
+      <button class="button-secondary" type="button" (click)="requestBatchImport()">Import Batch</button>
+    </details>
+  </div>
+
+  <aside class="status-panel" *ngIf="uploadStatus">
+    <h3 class="status-title">Latest Status</h3>
+    <p class="status-message" [ngClass]="statusClass">{{ uploadStatus }}</p>
+  </aside>
+</section>

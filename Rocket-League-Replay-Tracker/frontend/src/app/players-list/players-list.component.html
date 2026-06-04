@@ -1,0 +1,41 @@
+<section class="card">
+  <div class="section-header">
+    <h2>Players</h2>
+    <p>Top performers sorted by total production.</p>
+  </div>
+
+  <div class="table-wrap" *ngIf="players.length; else emptyState">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Matches</th>
+          <th>Goals</th>
+          <th>Assists</th>
+          <th>Saves</th>
+          <th>MVPs</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let player of players | slice:0:10; let index = index"
+          (click)="selectPlayer(player.playerId)"
+          [class.row-selected]="selectedPlayerId === player.playerId"
+        >
+          <td>{{ index + 1 }}</td>
+          <td>{{ player.playerName }}</td>
+          <td>{{ player.matchesPlayed }}</td>
+          <td>{{ player.totalGoals }}</td>
+          <td>{{ player.totalAssists }}</td>
+          <td>{{ player.totalSaves }}</td>
+          <td>{{ player.mvpCount }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <p class="empty">No players available yet. Import replays to build leaderboard data.</p>
+  </ng-template>
+</section>

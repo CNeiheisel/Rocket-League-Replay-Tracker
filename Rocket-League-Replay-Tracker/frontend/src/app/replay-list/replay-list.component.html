@@ -1,0 +1,47 @@
+<section class="card">
+  <div class="section-header">
+    <h2>Replay List</h2>
+    <p>Most recent matches with team rosters and scoreline context.</p>
+  </div>
+
+  <div class="matches-grid" *ngIf="matches.length; else emptyState">
+    <article class="match-card" *ngFor="let match of matches | slice:0:10">
+      <div class="match-top-row">
+        <div>
+          <h3>{{ match.mapName || 'Unknown Map' }}</h3>
+          <p>{{ match.matchDate | date: 'mediumDate' }} · {{ match.gameMode || 'Standard' }}</p>
+        </div>
+        <div class="scoreboard">
+          <div class="score-chip" [ngClass]="getScoreClass(match, 'blue')">Blue {{ match.blueScore ?? 0 }}</div>
+          <span class="versus">VS</span>
+          <div class="score-chip" [ngClass]="getScoreClass(match, 'orange')">Orange {{ match.orangeScore ?? 0 }}</div>
+        </div>
+      </div>
+
+      <div class="team-grid">
+        <div>
+          <h4 class="team-label blue">Blue Team</h4>
+          <div class="pill-wrap" *ngIf="getTeamPlayers(match, 'blue').length; else noBlueTeam">
+            <span class="player-pill blue" *ngFor="let playerName of getTeamPlayers(match, 'blue')">{{ playerName }}</span>
+          </div>
+          <ng-template #noBlueTeam>
+            <p class="no-team-data">No players listed</p>
+          </ng-template>
+        </div>
+        <div>
+          <h4 class="team-label orange">Orange Team</h4>
+          <div class="pill-wrap" *ngIf="getTeamPlayers(match, 'orange').length; else noOrangeTeam">
+            <span class="player-pill orange" *ngFor="let playerName of getTeamPlayers(match, 'orange')">{{ playerName }}</span>
+          </div>
+          <ng-template #noOrangeTeam>
+            <p class="no-team-data">No players listed</p>
+          </ng-template>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyState>
+    <p class="empty">No replay data loaded yet. Import replays from the start screen.</p>
+  </ng-template>
+</section>

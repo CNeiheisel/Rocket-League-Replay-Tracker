@@ -1,0 +1,77 @@
+.page-shell {
+  min-height: 100vh;
+}
+
+.container {
+  padding-top: 2.2rem;
+  padding-bottom: 2.2rem;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.tab {
+  min-width: 120px;
+}
+
+.loading-card {
+  text-align: center;
+}
+
+.loading-card p {
+  margin: 0;
+}
+
+.filters-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.player-filter-group,
+.range-filter-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.filters-card label {
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trends-card h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.15rem;
+}
+
+.trend-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.trend-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  background: rgba(6, 18, 40, 0.72);
+  border: 1px solid rgba(139, 216, 255, 0.14);
+}
+
+@media (max-width: 760px) {
+  .filters-card {
+    grid-template-columns: 1fr;
+  }
+
+  .trend-row {
+    flex-direction: column;
+  }
+}
