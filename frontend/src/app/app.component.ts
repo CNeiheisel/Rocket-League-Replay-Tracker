@@ -1,61 +1,43 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { AiCoachComponent } from './ai-coach/ai-coach.component';
-import { environment } from '../environments/environment';
-
-interface Player {
-  player_id: number;
-  player_name: string;
-  matches_played: number;
-  avg_goals: number;
-  total_goals: number;
-  total_assists: number;
-  total_saves: number;
-  mvp_count: number;
-}
-
-interface Match {
-  match_id: string;
-  map_name?: string;
-  match_date?: string;
-  game_mode?: string;
-  blue_score?: number;
-  orange_score?: number;
-  winning_team?: string;
-  players?: { name: string; team: string }[];
-}
-
-interface Trend {
-  date: string;
-  avg_goals: number;
-  avg_assists: number;
-  avg_saves: number;
-}
+import { StartScreenComponent } from './start-screen/start-screen.component';
+import { PlayersListComponent } from './players-list/players-list.component';
+import { ReplayListComponent } from './replay-list/replay-list.component';
+import { Player, ReplayMatch, TrendPoint } from './models/replay-tracker.models';
+import { ReplayTrackerApiService } from './services/replay-tracker-api.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, AiCoachComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AiCoachComponent,
+    StartScreenComponent,
+    PlayersListComponent,
+    ReplayListComponent
+  ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  title = 'Rocket League Replay Tracker';
-  activeTab = 'overview';
+  readonly title = 'Rocket League Replay Tracker';
+  activeTab: 'overview' | 'players' | 'replays' | 'aiCoach' = 'overview';
   replayId = '';
   batchReplayIds = '';
   uploadStatus = '';
   loading = true;
   players: Player[] = [];
-  matches: Match[] = [];
-  selectedPlayer?: Player;
-  selectedPlayerId: number | '' = '';
+  matches: ReplayMatch[] = [];
+  selectedPlayer: Player | null = null;
+  selectedPlayerId: number | null = null;
   filter = { days: 30 };
-  trends: Trend[] = [];
+  trends: TrendPoint[] = [];
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly replayTrackerApi: ReplayTrackerApiService) {}
 
   ngOnInit(): void {
     this.loadData();
@@ -65,38 +47,16 @@ export class AppComponent implements OnInit {
     return parseFloat(String(value));
   }
 
-  hasTeamPlayers(match: Match, team: string): boolean {
-    return Array.isArray((match as any).players) && ((match as any).players as any[]).some((p) => p.team === team);
-  }
-
-  getScoreStyle(match: Match, team: string) {
-    const isWinner = match.winning_team === team;
-    const blueGradient = 'linear-gradient(to right, #3b82f6, #2563eb)';
-    const orangeGradient = 'linear-gradient(to right, #f97316, #dc2626)';
-    const blueFallback = 'rgba(59, 130, 246, 0.3)';
-    const orangeFallback = 'rgba(249, 115, 22, 0.3)';
-
-    return {
-      padding: '8px 16px',
-      'border-radius': '8px',
-      background: team === 'blue' ? (isWinner ? blueGradient : blueFallback) : isWinner ? orangeGradient : orangeFallback,
-      color: 'white'
-    } as any;
-  }
-
-  loadData(): void {
+  async loadData(): Promise<void> {
     this.loading = true;
-    Promise.all([this.fetchMatches(), this.fetchPlayers()]).finally(() => {
+    await Promise.all([this.fetchMatches(), this.fetchPlayers()]).finally(() => {
       this.loading = false;
     });
   }
 
   async fetchMatches(): Promise<void> {
     try {
-      const data = await this.http
-        .get<Match[]>(`${environment.apiUrl}/ballchasing/matches?limit=20`)
-        .toPromise();
-      this.matches = Array.isArray(data) ? data : [];
+      this.matches = await firstValueFrom(this.replayTrackerApi.fetchMatches(20));
     } catch (error) {
       console.error('Error fetching matches:', error);
       this.matches = [];
@@ -105,8 +65,7 @@ export class AppComponent implements OnInit {
 
   async fetchPlayers(): Promise<void> {
     try {
-      const data = await this.http.get<Player[]>(`${environment.apiUrl}/players`).toPromise();
-      this.players = Array.isArray(data) ? data : [];
+      this.players = await firstValueFrom(this.replayTrackerApi.fetchPlayers());
     } catch (error) {
       console.error('Error fetching players:', error);
       this.players = [];
@@ -120,33 +79,30 @@ export class AppComponent implements OnInit {
     }
 
     try {
-      const data = await this.http
-        .get<Trend[]>(
-          `${environment.apiUrl}/stats/trends?player_id=${this.selectedPlayer.player_id}&days=${this.filter.days}`
-        )
-        .toPromise();
-      this.trends = Array.isArray(data) ? data : [];
+      this.trends = await firstValueFrom(
+        this.replayTrackerApi.fetchTrends(this.selectedPlayer.playerId, this.filter.days)
+      );
     } catch (error) {
       console.error('Error fetching trends:', error);
       this.trends = [];
     }
   }
 
-  selectPlayer(playerId: number | string): void {
+  selectPlayer(playerId: number): void {
     const id = Number(playerId);
     if (!id) {
-      this.selectedPlayer = undefined;
+      this.selectedPlayer = null;
       this.trends = [];
-      this.selectedPlayerId = '';
+      this.selectedPlayerId = null;
       return;
     }
 
-    this.selectedPlayer = this.players.find((player) => player.player_id === id);
+    this.selectedPlayer = this.players.find((player) => player.playerId === id) ?? null;
     this.selectedPlayerId = id;
     this.fetchTrends();
   }
 
-  setActiveTab(tab: string): void {
+  setActiveTab(tab: 'overview' | 'players' | 'replays' | 'aiCoach'): void {
     this.activeTab = tab;
   }
 
@@ -158,23 +114,21 @@ export class AppComponent implements OnInit {
 
     this.uploadStatus = 'Importing replay...';
     try {
-      const response: any = await this.http
-        .post(`${environment.apiUrl}/replays/import`, { replay_id: this.replayId })
-        .toPromise();
+      const response = await firstValueFrom(this.replayTrackerApi.importReplay(this.replayId));
 
       if (response?.success) {
-        this.uploadStatus = '✓ Import successful!';
+        this.uploadStatus = 'Import successful';
         this.replayId = '';
         await this.loadData();
         setTimeout(() => (this.uploadStatus = ''), 3000);
       } else {
-        this.uploadStatus = '✗ Import failed';
+        this.uploadStatus = 'Import failed';
       }
     } catch (error: any) {
       if (error?.status === 409) {
-        this.uploadStatus = '⚠ Replay already imported';
+        this.uploadStatus = 'Replay already imported';
       } else {
-        this.uploadStatus = '✗ Import error';
+        this.uploadStatus = 'Import error';
       }
       console.error('Import error:', error);
     }
@@ -193,17 +147,15 @@ export class AppComponent implements OnInit {
 
     this.uploadStatus = `Importing ${ids.length} replays...`;
     try {
-      const response: any = await this.http
-        .post(`${environment.apiUrl}/replays/batch-import`, { replay_ids: ids })
-        .toPromise();
+      const response = await firstValueFrom(this.replayTrackerApi.batchImport(ids));
 
-      this.uploadStatus = `✓ Success: ${response.success?.length ?? 0} | ⚠ Skipped: ${response.skipped?.length ?? 0} | ✗ Failed: ${response.failed?.length ?? 0}`;
+      this.uploadStatus = `Success: ${response.success?.length ?? 0} | Skipped: ${response.skipped?.length ?? 0} | Failed: ${response.failed?.length ?? 0}`;
       this.batchReplayIds = '';
       await this.loadData();
       setTimeout(() => (this.uploadStatus = ''), 5000);
     } catch (error) {
       console.error('Batch import error:', error);
-      this.uploadStatus = '✗ Batch import error';
+      this.uploadStatus = 'Batch import error';
     }
   }
 
@@ -221,12 +173,12 @@ export class AppComponent implements OnInit {
         label: 'Avg Goals/Game',
         value:
           this.players.length > 0
-            ? (this.players.reduce((sum, p) => sum + Number(p.avg_goals || 0), 0) / this.players.length).toFixed(2)
+            ? (this.players.reduce((sum, player) => sum + Number(player.averageGoals || 0), 0) / this.players.length).toFixed(2)
             : '0.00'
       },
       {
         label: 'Total MVPs',
-        value: this.players.reduce((sum, p) => sum + Number(p.mvp_count || 0), 0)
+        value: this.players.reduce((sum, player) => sum + Number(player.mvpCount || 0), 0)
       }
     ];
   }

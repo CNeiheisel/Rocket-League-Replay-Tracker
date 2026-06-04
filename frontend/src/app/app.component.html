@@ -1,161 +1,89 @@
-<div class="container">
-  <header class="card" style="text-align: center;">
-    <div style="display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;">
-      <span style="font-size: 2rem; color: #60a5fa;">⚡</span>
-      <h1 class="header-title" style="margin: 0; font-size: 3rem; font-weight: 900; background: linear-gradient(to right, #60a5fa, #a78bfa, #fb923c); -webkit-background-clip: text; color: transparent;">
-        Rocket League Replay Tracker
-      </h1>
-      <span style="font-size: 2rem; color: #fb923c;">⚡</span>
-    </div>
-    <p style="color: #d1d5db; margin-top: 12px; font-size: 1rem;">Michigan State University Varsity Team</p>
-  </header>
+<div class="page-shell">
+  <main class="container">
+    <app-start-screen
+      [replayId]="replayId"
+      [batchReplayIds]="batchReplayIds"
+      [uploadStatus]="uploadStatus"
+      (replayIdChange)="replayId = $event"
+      (batchReplayIdsChange)="batchReplayIds = $event"
+      (replayImportRequested)="handleReplayImport()"
+      (batchImportRequested)="handleBatchImport()"
+    ></app-start-screen>
 
-  <div class="tabs card">
-    <button class="tab" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">Overview</button>
-    <button class="tab" [class.active]="activeTab === 'players'" (click)="setActiveTab('players')">Players</button>
-    <button class="tab" [class.active]="activeTab === 'matches'" (click)="setActiveTab('matches')">Matches</button>
-    <button class="tab" [class.active]="activeTab === 'aicoach'" (click)="setActiveTab('aicoach')">AI Coach</button>
-  </div>
+    <nav class="tabs card" aria-label="Primary tabs">
+      <button class="tab" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">Overview</button>
+      <button class="tab" [class.active]="activeTab === 'players'" (click)="setActiveTab('players')">Players</button>
+      <button class="tab" [class.active]="activeTab === 'replays'" (click)="setActiveTab('replays')">Replay List</button>
+      <button class="tab" [class.active]="activeTab === 'aiCoach'" (click)="setActiveTab('aiCoach')">AI Coach</button>
+    </nav>
 
-  <div class="card" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
-    <div style="flex: 1; min-width: 280px;">
-      <h2 style="font-size: 1.4rem; margin-bottom: 16px;">Import Replay from Ballchasing</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-        <input class="input-field" type="text" placeholder="Enter replay ID" [(ngModel)]="replayId" />
-        <button class="button-primary" (click)="handleReplayImport()">Import</button>
+    <section *ngIf="loading" class="card loading-card">
+      <p>Loading dashboard data...</p>
+    </section>
+
+    <section *ngIf="!loading && activeTab === 'overview'">
+      <div class="stat-grid">
+        <article class="stat-card" *ngFor="let stat of overviewStats">
+          <p class="stat-title">{{ stat.label }}</p>
+          <p class="stat-value">{{ stat.value }}</p>
+        </article>
       </div>
-      <details style="color: #9ca3af;">
-        <summary style="cursor: pointer;">📦 Batch Import</summary>
-        <textarea class="textarea-field" rows="4" placeholder="Enter replay IDs, one per line" [(ngModel)]="batchReplayIds" style="margin-top: 12px;"></textarea>
-        <button class="button-secondary" style="margin-top: 12px;" (click)="handleBatchImport()">Batch Import</button>
-      </details>
-    </div>
-    <div style="min-width: 260px; flex: 0 0 320px;">
-      <div *ngIf="uploadStatus" [ngStyle]="{ background: uploadStatus.includes('✓') ? 'rgba(34, 197, 94, 0.2)' : uploadStatus.includes('⚠') ? 'rgba(234, 179, 8, 0.2)' : 'rgba(59, 130, 246, 0.2)', color: uploadStatus.includes('✓') ? '#86efac' : uploadStatus.includes('⚠') ? '#fde047' : '#93c5fd', border: '1px solid', borderColor: uploadStatus.includes('✓') ? 'rgba(34, 197, 94, 0.3)' : uploadStatus.includes('⚠') ? 'rgba(234, 179, 8, 0.3)' : 'rgba(59, 130, 246, 0.3)' }" class="card">
-        {{ uploadStatus }}
-      </div>
-    </div>
-  </div>
 
-  <div *ngIf="loading" class="card" style="text-align:center;">
-    <p style="font-size: 1.25rem; margin: 0;">Loading...</p>
-  </div>
-
-  <section *ngIf="!loading && activeTab === 'overview'">
-    <div class="stat-grid">
-      <div class="stat-card" *ngFor="let stat of overviewStats">
-        <div class="stat-title">{{ stat.label }}</div>
-        <div class="stat-value">{{ stat.value }}</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
-        <div style="flex: 1; min-width: 220px;">
-          <label style="display:block; margin-bottom: 8px; color: #cbd5e1;">Select Player</label>
-          <select class="select-field" [(ngModel)]="selectedPlayerId" (ngModelChange)="selectPlayer($event)">
-            <option [value]="''">Select a player</option>
-            <option *ngFor="let player of players" [value]="player.player_id">
-              {{ player.player_name }} - {{ player.matches_played }} matches
+      <div class="card filters-card">
+        <div class="player-filter-group">
+          <label for="playerSelect">Select Player</label>
+          <select
+            id="playerSelect"
+            class="select-field"
+            [ngModel]="selectedPlayerId"
+            (ngModelChange)="selectPlayer($event)"
+          >
+            <option [ngValue]="null">Select a player</option>
+            <option *ngFor="let player of players" [ngValue]="player.playerId">
+              {{ player.playerName }} - {{ player.matchesPlayed }} matches
             </option>
           </select>
         </div>
-        <div style="flex: 0 0 140px; min-width: 140px;">
-          <label style="display:block; margin-bottom: 8px; color: #cbd5e1;">Range</label>
-          <select class="select-field" [(ngModel)]="filter.days" (change)="fetchTrends()">
-            <option [value]="7">Last 7 Days</option>
-            <option [value]="30">Last 30 Days</option>
-            <option [value]="90">Last 90 Days</option>
+
+        <div class="range-filter-group">
+          <label for="rangeSelect">Range</label>
+          <select id="rangeSelect" class="select-field" [(ngModel)]="filter.days" (change)="fetchTrends()">
+            <option [ngValue]="7">Last 7 Days</option>
+            <option [ngValue]="30">Last 30 Days</option>
+            <option [ngValue]="90">Last 90 Days</option>
           </select>
         </div>
       </div>
-    </div>
 
-    <div *ngIf="selectedPlayer && trends?.length" class="card">
-      <h2 style="margin-top: 0;">Performance Trends — {{ selectedPlayer.player_name }}</h2>
-      <div style="display:grid; gap:12px;">
-        <div *ngFor="let trend of trends" style="display:flex; justify-content: space-between; padding: 12px; background: rgba(15,23,42,0.65); border-radius: 12px;">
-          <span>{{ trend.date }}</span>
-          <span>G: {{ stripZeros(trend.avg_goals) }} · A: {{ stripZeros(trend.avg_assists) }} · S: {{ stripZeros(trend.avg_saves) }}</span>
+      <section *ngIf="selectedPlayer && trends.length" class="card trends-card">
+        <h2>{{ selectedPlayer.playerName }} Performance Trends</h2>
+        <div class="trend-list">
+          <article *ngFor="let trend of trends" class="trend-row">
+            <span>{{ trend.date }}</span>
+            <span>
+              G: {{ stripZeros(trend.averageGoals) }}
+              · A: {{ stripZeros(trend.averageAssists) }}
+              · S: {{ stripZeros(trend.averageSaves) }}
+            </span>
+          </article>
         </div>
-      </div>
-    </div>
-  </section>
+      </section>
+    </section>
 
-  <section *ngIf="!loading && activeTab === 'players'">
-    <div class="card">
-      <h2 style="margin-top: 0;">Top Players Leaderboard</h2>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>Matches</th>
-            <th>Goals</th>
-            <th>Assists</th>
-            <th>Saves</th>
-            <th>MVPs</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let player of players | slice:0:10; let i=index" (click)="selectPlayer(player.player_id)" style="cursor:pointer;">
-            <td>{{ i + 1 }}</td>
-            <td>{{ player.player_name }}</td>
-            <td>{{ player.matches_played }}</td>
-            <td>{{ player.total_goals }}</td>
-            <td>{{ player.total_assists }}</td>
-            <td>{{ player.total_saves }}</td>
-            <td>{{ player.mvp_count }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    <section *ngIf="!loading && activeTab === 'players'">
+      <app-players-list
+        [players]="players"
+        [selectedPlayerId]="selectedPlayerId"
+        (playerSelected)="selectPlayer($event)"
+      ></app-players-list>
+    </section>
 
-  <section *ngIf="!loading && activeTab === 'matches'">
-    <div class="card">
-      <h2 style="margin-top: 0;">Recent Matches</h2>
-      <div style="display:grid; gap:16px;">
-        <div *ngFor="let match of matches | slice: 0:10" class="match-card">
-          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div>
-              <div style="font-weight: 700; font-size: 1.1rem;">{{ match.map_name || 'Unknown Map' }}</div>
-              <div style="color:#9ca3af;">{{ match.match_date | date:'mediumDate' }} • {{ match.game_mode || 'Standard' }}</div>
-            </div>
-            <div style="display:flex; gap:12px; align-items:center;">
-              <div [ngStyle]="getScoreStyle(match, 'blue')">Blue {{ match.blue_score }}</div>
-              <span style="color:#6b7280; font-weight:700;">VS</span>
-              <div [ngStyle]="getScoreStyle(match, 'orange')">Orange {{ match.orange_score }}</div>
-            </div>
-          </div>
+    <section *ngIf="!loading && activeTab === 'replays'">
+      <app-replay-list [matches]="matches"></app-replay-list>
+    </section>
 
-          <!-- Players per team -->
-          <div style="display:flex; gap:24px; margin-top:12px; flex-wrap:wrap;">
-            <div>
-              <div style="color:#93c5fd; font-weight:700; margin-bottom:8px;">Blue Team</div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <ng-container *ngFor="let p of (match.players || [])">
-                  <span *ngIf="p.team === 'blue'" class="badge badge-blue">{{ p.name }}</span>
-                </ng-container>
-                <span *ngIf="!hasTeamPlayers(match, 'blue')" style="color:#6b7280">No players</span>
-              </div>
-            </div>
-            <div>
-              <div style="color:#fdba74; font-weight:700; margin-bottom:8px;">Orange Team</div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <ng-container *ngFor="let p of (match.players || [])">
-                  <span *ngIf="p.team === 'orange'" class="badge badge-orange">{{ p.name }}</span>
-                </ng-container>
-                <span *ngIf="!hasTeamPlayers(match, 'orange')" style="color:#6b7280">No players</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section *ngIf="!loading && activeTab === 'aicoach'">
-    <app-ai-coach></app-ai-coach>
-  </section>
+    <section *ngIf="!loading && activeTab === 'aiCoach'">
+      <app-ai-coach></app-ai-coach>
+    </section>
+  </main>
 </div>

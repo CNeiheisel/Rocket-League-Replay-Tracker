@@ -1,8 +1,8 @@
 <div class="card">
-  <h2 style="margin-top:0;">Rocket League AI Coach</h2>
-  <p style="color:#cbd5e1;">AI-powered performance analysis and training recommendations.</p>
+  <h2 class="title">Rocket League AI Coach</h2>
+  <p class="subtitle">AI-powered performance analysis and training recommendations.</p>
 
-  <div style="display:grid; gap:16px; margin-top:24px;">
+  <div class="form-grid">
     <div>
       <label class="label">Current Rank</label>
       <select class="select-field" [(ngModel)]="currentRank">
@@ -10,16 +10,18 @@
       </select>
     </div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
-      <ng-container *ngFor="let stat of objectKeys(playerStats)">
+    <div class="metrics-grid">
+      <ng-container *ngFor="let metricKey of metricKeys">
         <div>
-          <label class="label">{{ formatStatName(stat) }}</label>
-          <input class="input-field" type="number" [(ngModel)]="playerStats[stat]" />
+          <label class="label">{{ formatLabel(metricKey) }}</label>
+          <input class="input-field" type="number" [(ngModel)]="playerMetrics[metricKey]" />
         </div>
       </ng-container>
     </div>
 
-    <button class="button-primary" (click)="analyzePlayer()" [disabled]="loading">{{ loading ? 'Analyzing...' : 'Analyze Player' }}</button>
+    <button class="button-primary" (click)="analyzePlayer()" [disabled]="loading">
+      {{ loading ? 'Analyzing...' : 'Analyze Player' }}
+    </button>
   </div>
 </div>
 

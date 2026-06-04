@@ -1,39 +1,41 @@
-<div *ngIf="analysis?.success" class="card" style="background: linear-gradient(to right, #0f172a, #1e3a8a);">
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-    <span style="font-size:1.5rem; color:#fbbf24;">🏆</span>
+<div *ngIf="analysis?.success" class="card analysis-shell">
+  <div class="analysis-header">
+    <span class="analysis-icon">Trophy</span>
     <div>
-      <h2 style="margin:0; font-size:1.6rem;">AI Coach Analysis</h2>
-      <p style="margin:4px 0 0; color:#cbd5e1;">Personalized improvement recommendations</p>
+      <h2>AI Coach Analysis</h2>
+      <p>Personalized improvement recommendations</p>
     </div>
   </div>
 
-  <div class="card" style="background: rgba(255,255,255,0.08); padding:16px; margin-bottom:16px; border:1px solid rgba(255,255,255,0.12);">
-    <h3 style="margin:0 0 8px;">Overall Assessment</h3>
-    <p style="margin:0; color:#e2e8f0;">{{ analysis.overall_assessment }}</p>
+  <div class="assessment-card">
+    <h3>Overall Assessment</h3>
+    <p>{{ analysis.overallAssessment }}</p>
   </div>
 
   <div *ngIf="analysis.advice?.length">
-    <h3 style="margin-top:0;">Top 3 Areas to Improve</h3>
-    <div *ngFor="let item of analysis.advice" style="margin-bottom:16px; padding:16px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:12px;">
-      <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:8px;">
-        <div style="width:32px; height:32px; border-radius:50%; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-weight:700;">{{ item.priority }}</div>
+    <h3>Top Areas to Improve</h3>
+    <div *ngFor="let item of analysis.advice" class="advice-card">
+      <div class="advice-row">
+        <div class="priority-badge">{{ item.priority }}</div>
         <div>
-          <h4 style="margin:0 0 4px;">{{ item.title }}</h4>
-          <p style="margin:0; color:#cbd5e1;">{{ item.advice }}</p>
+          <h4>{{ item.title }}</h4>
+          <p>{{ item.advice }}</p>
         </div>
       </div>
-      <div *ngIf="item.drills?.length" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-        <span *ngFor="let drill of item.drills" class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">{{ drill }}</span>
+      <div *ngIf="item.drills?.length" class="drills-wrap">
+        <span *ngFor="let drill of item.drills" class="badge badge-drill">{{ drill }}</span>
       </div>
     </div>
   </div>
 
-  <div *ngIf="analysis.all_gaps?.length" style="background: rgba(255,255,255,0.05); padding:16px; border-radius: 12px; border:1px solid rgba(255,255,255,0.12);">
-    <h4 style="margin-top:0;">All Stats vs Next Rank</h4>
-    <div style="display:grid; gap:12px;">
-      <div *ngFor="let gap of analysis.all_gaps | slice:0:6" style="background: rgba(15,23,42,0.75); padding:12px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
-        <span>{{ formatStatName(gap.stat) }}</span>
-        <span [style.color]="gap.gap > 0 ? '#fb7185' : '#34d399'">{{ gap.gap > 0 ? '↓' : '↑' }} {{ gap.gap_percentage | number:'1.0-0' }}%</span>
+  <div *ngIf="analysis.allGaps?.length" class="gaps-card">
+    <h4>All Stats vs Next Rank</h4>
+    <div class="gap-grid">
+      <div *ngFor="let gap of analysis.allGaps | slice:0:6" class="gap-row">
+        <span>{{ formatLabel(gap.stat) }}</span>
+        <span [style.color]="gap.gap > 0 ? '#ff9bab' : '#8ef0b8'">
+          {{ gap.gap > 0 ? 'Down' : 'Up' }} {{ gap.gapPercentage | number:'1.0-0' }}%
+        </span>
       </div>
     </div>
   </div>

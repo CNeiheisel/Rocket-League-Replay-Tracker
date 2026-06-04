@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PlayerAnalysis } from '../ai-coach/ai-coach.component';
 
 @Component({
   selector: 'app-analysis-card',
@@ -9,9 +10,9 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./analysis-card.component.css']
 })
 export class AnalysisCardComponent {
-  @Input() analysis: any;
+  @Input() analysis: PlayerAnalysis | null = null;
 
-  formatStatName(stat: string): string {
-    return stat.replace(/_/g, ' ');
+  formatLabel(value: string): string {
+    return value.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
   }
 }
