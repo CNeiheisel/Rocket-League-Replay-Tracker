@@ -9,7 +9,7 @@ import {
   ReplayMatch,
   TrendPoint
 } from '../models/replay-tracker.models';
- 
+
 interface PlayerApiResponse {
   player_id: number;
   player_name: string;
@@ -20,70 +20,121 @@ interface PlayerApiResponse {
   total_saves: number;
   mvp_count: number;
 }
- 
+
 interface MatchApiResponse {
   match_id: string;
   map_name?: string;
   match_date?: string;
   game_mode?: string;
-  // FIX: The DB returns snake_case columns. These were previously only
-  // expected from the Ballchasing list endpoint, which didn't reliably
-  // populate scores. Now they come from our own DB so they're always correct.
   blue_score?: number;
   orange_score?: number;
   winning_team?: string;
   players?: { name: string; team: string }[];
 }
- 
+
 interface TrendApiResponse {
   date: string;
   avg_goals: number;
   avg_assists: number;
   avg_saves: number;
 }
- 
+
 @Injectable({
   providedIn: 'root'
 })
 export class ReplayTrackerApiService {
   private readonly apiUrl = environment.apiUrl;
- 
+
   constructor(private readonly http: HttpClient) {}
- 
-  // FIX: Changed from /ballchasing/matches (live Ballchasing API, no reliable scores,
-  // no player data) to /matches (our DB, which has correct scores and full rosters
-  // after replays are imported). This also means the players page and replays page
-  // now share the same data source.
+
   fetchMatches(limit = 20): Observable<ReplayMatch[]> {
     return this.http
       .get<MatchApiResponse[]>(`${this.apiUrl}/matches?limit=${limit}`)
       .pipe(map((matches: MatchApiResponse[]) => (Array.isArray(matches) ? matches.map((match: MatchApiResponse) => this.mapMatch(match)) : [])));
   }
- 
+
   fetchPlayers(): Observable<Player[]> {
     return this.http
       .get<PlayerApiResponse[]>(`${this.apiUrl}/players`)
       .pipe(map((players: PlayerApiResponse[]) => (Array.isArray(players) ? players.map((player: PlayerApiResponse) => this.mapPlayer(player)) : [])));
   }
- 
+
   fetchTrends(playerId: number, days: number): Observable<TrendPoint[]> {
     return this.http
       .get<TrendApiResponse[]>(`${this.apiUrl}/stats/trends?player_id=${playerId}&days=${days}`)
       .pipe(map((trends: TrendApiResponse[]) => (Array.isArray(trends) ? trends.map((trend: TrendApiResponse) => this.mapTrend(trend)) : [])));
   }
- 
+
   importReplay(replayId: string): Observable<ReplayImportResult> {
     return this.http.post<ReplayImportResult>(`${this.apiUrl}/replays/import`, { replay_id: replayId });
   }
- 
+
   batchImport(replayIds: string[]): Observable<BatchImportResult> {
     return this.http.post<BatchImportResult>(`${this.apiUrl}/replays/batch-import`, { replay_ids: replayIds });
   }
- 
+
+  // Analyze a player across all their imported games
+  analyzePlayerAcrossGames(playerId: number): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/players/${playerId}/match-stats`).pipe(
+      map((data: unknown) => {
+        const d = data as Record<string, unknown>;
+        return this.http.post(`${this.apiUrl}/analysis/analyze-player`, {
+          player_name: d['player_name'],
+          aggregated_stats: d['aggregated_stats'],
+          recent_games: d['recent_games']
+        });
+      }),
+      // Unwrap the inner observable
+      (source) => new Observable(observer => {
+        source.subscribe({
+          next: (inner) => {
+            (inner as Observable<unknown>).subscribe({
+              next: val => observer.next(val),
+              error: err => observer.error(err),
+              complete: () => observer.complete()
+            });
+          },
+          error: err => observer.error(err)
+        });
+      })
+    );
+  }
+
+  // Analyze a specific player in a specific match
+  analyzeSingleGame(matchId: string, playerName: string): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/matches/${matchId}/player-stats`).pipe(
+      map((data: unknown) => {
+        const d = data as Record<string, unknown>;
+        const players = Array.isArray(d['players']) ? d['players'] : [];
+        const playerStats = players.find(
+          (p: unknown) => (p as Record<string, unknown>)['player_name'] === playerName
+        ) as Record<string, unknown> | undefined;
+
+        return this.http.post(`${this.apiUrl}/analysis/analyze`, {
+          player_name: playerName,
+          stats: playerStats ?? {},
+          match_info: d['match']
+        });
+      }),
+      (source) => new Observable(observer => {
+        source.subscribe({
+          next: (inner) => {
+            (inner as Observable<unknown>).subscribe({
+              next: val => observer.next(val),
+              error: err => observer.error(err),
+              complete: () => observer.complete()
+            });
+          },
+          error: err => observer.error(err)
+        });
+      })
+    );
+  }
+
   analyzePlayer(payload: { stats: Record<string, number>; current_rank: string }): Observable<unknown> {
     return this.http.post(`${this.apiUrl}/analysis/analyze`, payload);
   }
- 
+
   private mapPlayer(player: PlayerApiResponse): Player {
     return {
       playerId: player.player_id,
@@ -96,23 +147,20 @@ export class ReplayTrackerApiService {
       mvpCount: Number(player.mvp_count ?? 0)
     };
   }
- 
+
   private mapMatch(match: MatchApiResponse): ReplayMatch {
     return {
       matchId: match.match_id,
       mapName: match.map_name,
       matchDate: match.match_date,
       gameMode: match.game_mode,
-      // FIX: blue_score and orange_score now come reliably from the DB.
-      // Previously from the Ballchasing list endpoint these were always 0
-      // because the list response doesn't nest goals under blue.stats.core.goals.
       blueScore: match.blue_score ?? 0,
       orangeScore: match.orange_score ?? 0,
       winningTeam: match.winning_team,
       players: Array.isArray(match.players) ? match.players : []
     };
   }
- 
+
   private mapTrend(trend: TrendApiResponse): TrendPoint {
     return {
       date: trend.date,

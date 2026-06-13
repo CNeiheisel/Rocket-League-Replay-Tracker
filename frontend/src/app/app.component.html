@@ -59,7 +59,7 @@
         <h2>{{ selectedPlayer.playerName }} Performance Trends</h2>
         <div class="trend-list">
           <article *ngFor="let trend of trends" class="trend-row">
-            <span>{{ trend.date | date: 'mediumDate' }}</span>
+            <span>{{ trend.date | date:'mediumDate' }}</span>
             <span>
               G: {{ stripZeros(trend.averageGoals) }}
               · A: {{ stripZeros(trend.averageAssists) }}
@@ -82,8 +82,9 @@
       <app-replay-list [matches]="matches"></app-replay-list>
     </section>
 
+    <!-- AI Coach tab now receives players and matches so it can populate its selectors -->
     <section *ngIf="!loading && activeTab === 'aiCoach'">
-      <app-ai-coach></app-ai-coach>
+      <app-ai-coach [players]="players" [matches]="matches"></app-ai-coach>
     </section>
   </main>
 </div>

@@ -67,16 +67,106 @@ pool.on('error', (err) => {
   console.error('Unexpected Postgres client error', err);
 });
 
-const CPP_PARSER_PATH = './replay_parser';
-
 // ============ UTILITY FUNCTIONS ============
 
 const BALLCHASING_API_KEY = process.env.BALLCHASING_API_KEY;
 
 if (!BALLCHASING_API_KEY) {
-  console.warn("WARNING: BALLCHASING_API_KEY is not set — falling back to DB for match listing.");
+  console.warn("WARNING: BALLCHASING_API_KEY is not set.");
 } else {
   console.log("API key loaded successfully!");
+}
+
+// Parse replay using BallChasing API — extracts full rich stats
+async function parseReplayFromBallChasing(replayId) {
+  try {
+    const response = await fetch(`https://ballchasing.com/api/replays/${replayId}`, {
+      headers: { 'Authorization': BALLCHASING_API_KEY }
+    });
+
+    if (!response.ok) {
+      throw new Error(`BallChasing API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'ok') {
+      throw new Error(`Replay status: ${data.status}`);
+    }
+
+    const blueGoals = data.blue.stats.core.goals;
+    const orangeGoals = data.orange.stats.core.goals;
+
+    const formatted = {
+      replay_id: replayId,
+      title: data.title || 'Unknown',
+      map: data.map_name || data.map_code || 'Unknown',
+      date: data.date || new Date().toISOString(),
+      duration: data.duration || 300,
+      gameMode: data.playlist_name || 'Standard',
+      blueScore: blueGoals,
+      orangeScore: orangeGoals,
+      winningTeam: blueGoals > orangeGoals ? 'blue' : (orangeGoals > blueGoals ? 'orange' : 'draw'),
+      players: [],
+      success: true
+    };
+
+    const extractPlayer = (player, team) => ({
+      name: player.name,
+      team,
+      platform: player.id?.platform || 'Unknown',
+      // Core
+      score: player.stats?.core?.score ?? 0,
+      goals: player.stats?.core?.goals ?? 0,
+      assists: player.stats?.core?.assists ?? 0,
+      saves: player.stats?.core?.saves ?? 0,
+      shots: player.stats?.core?.shots ?? 0,
+      shooting_percentage: player.stats?.core?.shooting_percentage ?? 0,
+      mvp: player.mvp || false,
+      // Positioning
+      time_defensive_third: player.stats?.positioning?.time_defensive_third ?? 0,
+      time_neutral_third: player.stats?.positioning?.time_neutral_third ?? 0,
+      time_offensive_third: player.stats?.positioning?.time_offensive_third ?? 0,
+      percent_defensive_third: player.stats?.positioning?.percent_defensive_third ?? 0,
+      percent_offensive_third: player.stats?.positioning?.percent_offensive_third ?? 0,
+      percent_behind_ball: player.stats?.positioning?.percent_behind_ball ?? 0,
+      percent_infront_ball: player.stats?.positioning?.percent_infront_ball ?? 0,
+      time_most_back: player.stats?.positioning?.time_most_back ?? 0,
+      time_most_forward: player.stats?.positioning?.time_most_forward ?? 0,
+      // Boost
+      boost_avg_amount: player.stats?.boost?.avg_amount ?? 0,
+      boost_collected: player.stats?.boost?.amount_collected ?? 0,
+      boost_stolen: player.stats?.boost?.amount_stolen ?? 0,
+      time_zero_boost: player.stats?.boost?.time_zero_boost ?? 0,
+      time_full_boost: player.stats?.boost?.time_full_boost ?? 0,
+      // Movement
+      avg_speed: player.stats?.movement?.avg_speed ?? 0,
+      time_supersonic: player.stats?.movement?.time_supersonic_speed ?? 0,
+      percent_ground: player.stats?.movement?.percent_ground ?? 0,
+      percent_low_air: player.stats?.movement?.percent_low_air ?? 0,
+      percent_high_air: player.stats?.movement?.percent_high_air ?? 0,
+      // Demos
+      demos_inflicted: player.stats?.demo?.inflicted ?? 0,
+      demos_taken: player.stats?.demo?.taken ?? 0,
+    });
+
+    if (data.blue.players) {
+      for (const player of data.blue.players) {
+        formatted.players.push(extractPlayer(player, 'blue'));
+      }
+    }
+
+    if (data.orange.players) {
+      for (const player of data.orange.players) {
+        formatted.players.push(extractPlayer(player, 'orange'));
+      }
+    }
+
+    return formatted;
+  } catch (error) {
+    console.error('BallChasing API error:', error);
+    throw error;
+  }
 }
 
 // ============ API ENDPOINTS ============
@@ -87,8 +177,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // Get all matches (DB-sourced, with players joined in)
-// FIX: This is now the primary matches endpoint used by the frontend.
-// It includes player names and teams so the replays page shows rosters correctly.
 app.get('/api/matches', async (req, res) => {
   try {
     const { limit = 50, offset = 0, player_id, team } = req.query;
@@ -127,9 +215,6 @@ app.get('/api/matches', async (req, res) => {
     const result = await pool.query(query, params);
     const rows = result.rows || [];
 
-    // FIX: Enrich each match row with its players from player_stats.
-    // Previously this endpoint returned bare match rows with no player data,
-    // so the replays page showed "No players listed" for every match.
     const enriched = await Promise.all(rows.map(async (row) => {
       const pRes = await pool.query(`
         SELECT p.player_name AS name, ps.team
@@ -139,10 +224,7 @@ app.get('/api/matches', async (req, res) => {
         ORDER BY ps.team, p.player_name
       `, [row.match_id]);
 
-      return {
-        ...row,
-        players: pRes.rows || []
-      };
+      return { ...row, players: pRes.rows || [] };
     }));
 
     res.json(enriched);
@@ -181,79 +263,44 @@ app.get('/api/matches/:id', async (req, res) => {
   }
 });
 
-// Parse replay using BallChasing API
-async function parseReplayFromBallChasing(replayId) {
+// Get full player stats for a match — used by AI coach single game mode
+app.get('/api/matches/:id/player-stats', async (req, res) => {
   try {
-    const response = await fetch(`https://ballchasing.com/api/replays/${replayId}`, {
-      headers: {
-        'Authorization': BALLCHASING_API_KEY
-      }
+    const { id } = req.params;
+
+    const matchResult = await pool.query('SELECT * FROM matches WHERE match_id = $1', [id]);
+
+    if (matchResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const match = matchResult.rows[0];
+
+    const statsResult = await pool.query(`
+      SELECT ps.*, p.player_name, p.platform
+      FROM player_stats ps
+      JOIN players p ON ps.player_id = p.player_id
+      WHERE ps.match_id = $1
+      ORDER BY ps.score DESC
+    `, [id]);
+
+    res.json({
+      match: {
+        match_id: match.match_id,
+        map_name: match.map_name,
+        game_mode: match.game_mode,
+        match_date: match.match_date,
+        blue_score: match.blue_score,
+        orange_score: match.orange_score,
+        winning_team: match.winning_team
+      },
+      players: statsResult.rows
     });
-
-    if (!response.ok) {
-      throw new Error(`BallChasing API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.status !== 'ok') {
-      throw new Error(`Replay status: ${data.status}`);
-    }
-
-    const formatted = {
-      replay_id: replayId,
-      title: data.title || 'Unknown',
-      map: data.map_code || 'Unknown',
-      date: data.date || new Date().toISOString(),
-      duration: data.duration || 300,
-      gameMode: data.playlist_name || 'Standard',
-      blueScore: data.blue.stats.core.goals,
-      orangeScore: data.orange.stats.core.goals,
-      winningTeam: data.blue.stats.core.goals > data.orange.stats.core.goals ? 'blue' : 'orange',
-      players: [],
-      success: true
-    };
-
-    // Process blue team
-    if (data.blue.players) {
-      for (const player of data.blue.players) {
-        formatted.players.push({
-          name: player.name,
-          team: 'blue',
-          platform: player.id?.platform || 'Unknown',
-          score: player.stats.core.score,
-          goals: player.stats.core.goals,
-          assists: player.stats.core.assists,
-          saves: player.stats.core.saves,
-          shots: player.stats.core.shots,
-          mvp: player.mvp || false
-        });
-      }
-    }
-
-    // Process orange team
-    if (data.orange.players) {
-      for (const player of data.orange.players) {
-        formatted.players.push({
-          name: player.name,
-          team: 'orange',
-          platform: player.id?.platform || 'Unknown',
-          score: player.stats.core.score,
-          goals: player.stats.core.goals,
-          assists: player.stats.core.assists,
-          saves: player.stats.core.saves,
-          shots: player.stats.core.shots,
-          mvp: player.mvp || false
-        });
-      }
-    }
-
-    return formatted;
-  } catch (error) {
-    console.error('BallChasing API error:', error);
-    throw error;
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
-}
+});
 
 // Import replay by BallChasing ID
 app.post('/api/replays/import', async (req, res) => {
@@ -266,7 +313,6 @@ app.post('/api/replays/import', async (req, res) => {
       return res.status(400).json({ error: 'No replay_id provided' });
     }
 
-    // Check if replay already exists
     const existingReplay = await client.query(
       'SELECT match_id FROM matches WHERE replay_file_path = $1',
       [replay_id]
@@ -328,23 +374,51 @@ app.post('/api/replays/import', async (req, res) => {
         playerId = playerResult.rows[0].player_id;
       }
 
+      // Insert full rich stats including positioning, boost, movement, demos
       await client.query(`
         INSERT INTO player_stats (
-          match_id, player_id, team, goals, assists,
-          saves, shots, score, mvp
+          match_id, player_id, team,
+          goals, assists, saves, shots, score, mvp,
+          shooting_percentage,
+          time_defensive_third, time_neutral_third, time_offensive_third,
+          percent_defensive_third, percent_offensive_third,
+          percent_behind_ball, percent_infront_ball,
+          time_most_back, time_most_forward,
+          boost_avg_amount, boost_collected, boost_stolen,
+          time_zero_boost, time_full_boost,
+          avg_speed, time_supersonic,
+          percent_ground, percent_low_air, percent_high_air,
+          demos_inflicted, demos_taken
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES (
+          $1, $2, $3,
+          $4, $5, $6, $7, $8, $9,
+          $10,
+          $11, $12, $13,
+          $14, $15,
+          $16, $17,
+          $18, $19,
+          $20, $21, $22,
+          $23, $24,
+          $25, $26,
+          $27, $28, $29,
+          $30, $31
+        )
         ON CONFLICT (match_id, player_id) DO NOTHING
       `, [
-        matchId,
-        playerId,
-        playerData.team,
-        playerData.goals,
-        playerData.assists,
-        playerData.saves,
-        playerData.shots,
-        playerData.score,
-        playerData.mvp
+        matchId, playerId, playerData.team,
+        playerData.goals, playerData.assists, playerData.saves,
+        playerData.shots, playerData.score, playerData.mvp,
+        playerData.shooting_percentage,
+        playerData.time_defensive_third, playerData.time_neutral_third, playerData.time_offensive_third,
+        playerData.percent_defensive_third, playerData.percent_offensive_third,
+        playerData.percent_behind_ball, playerData.percent_infront_ball,
+        playerData.time_most_back, playerData.time_most_forward,
+        playerData.boost_avg_amount, playerData.boost_collected, playerData.boost_stolen,
+        playerData.time_zero_boost, playerData.time_full_boost,
+        playerData.avg_speed, playerData.time_supersonic,
+        playerData.percent_ground, playerData.percent_low_air, playerData.percent_high_air,
+        playerData.demos_inflicted, playerData.demos_taken
       ]);
     }
 
@@ -375,11 +449,7 @@ app.post('/api/replays/batch-import', async (req, res) => {
       return res.status(400).json({ error: 'Invalid replay_ids array' });
     }
 
-    const results = {
-      success: [],
-      failed: [],
-      skipped: []
-    };
+    const results = { success: [], failed: [], skipped: [] };
 
     for (const replay_id of replay_ids) {
       try {
@@ -410,7 +480,7 @@ app.post('/api/replays/batch-import', async (req, res) => {
   }
 });
 
-// Get player statistics
+// Get player statistics (leaderboard)
 app.get('/api/players', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -472,6 +542,76 @@ app.get('/api/players/:id', async (req, res) => {
       player: playerQuery.rows[0],
       recent_matches: recentMatchesQuery.rows
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get aggregated stats + recent games for a player — used by AI coach across-games mode
+app.get('/api/players/:id/match-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const aggResult = await pool.query(`
+      SELECT
+        p.player_name,
+        COUNT(DISTINCT ps.match_id) AS games_played,
+        AVG(ps.score) AS avg_score,
+        AVG(ps.goals) AS avg_goals,
+        AVG(ps.assists) AS avg_assists,
+        AVG(ps.saves) AS avg_saves,
+        AVG(ps.shots) AS avg_shots,
+        SUM(CASE WHEN ps.mvp THEN 1 ELSE 0 END) AS mvp_count,
+        AVG(ps.time_defensive_third) AS avg_defensive_third,
+        AVG(ps.time_offensive_third) AS avg_offensive_third,
+        AVG(ps.percent_behind_ball) AS avg_behind_ball,
+        AVG(ps.percent_infront_ball) AS avg_infront_ball,
+        AVG(ps.boost_avg_amount) AS avg_boost_amount,
+        AVG(ps.boost_stolen) AS avg_boost_stolen,
+        AVG(ps.time_zero_boost) AS avg_zero_boost,
+        AVG(ps.avg_speed) AS avg_speed,
+        AVG(ps.time_supersonic) AS avg_supersonic,
+        AVG(CASE WHEN ps.shots > 0 THEN (ps.goals::float / ps.shots) * 100 ELSE 0 END) AS avg_shooting_pct
+      FROM players p
+      JOIN player_stats ps ON p.player_id = ps.player_id
+      WHERE p.player_id = $1
+      GROUP BY p.player_id, p.player_name
+    `, [id]);
+
+    if (aggResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found or no stats available' });
+    }
+
+    const recentResult = await pool.query(`
+      SELECT
+        ps.goals, ps.assists, ps.saves, ps.score, ps.shots,
+        ps.team, ps.mvp, m.winning_team, m.match_date, m.map_name
+      FROM player_stats ps
+      JOIN matches m ON ps.match_id = m.match_id
+      WHERE ps.player_id = $1
+      ORDER BY m.match_date DESC
+      LIMIT 20
+    `, [id]);
+
+    const recentGames = recentResult.rows.map(g => ({
+      goals: g.goals,
+      assists: g.assists,
+      saves: g.saves,
+      score: g.score,
+      shots: g.shots,
+      mvp: g.mvp,
+      won: g.team === g.winning_team,
+      match_date: g.match_date,
+      map_name: g.map_name
+    }));
+
+    res.json({
+      player_name: aggResult.rows[0].player_name,
+      aggregated_stats: aggResult.rows[0],
+      recent_games: recentGames
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
