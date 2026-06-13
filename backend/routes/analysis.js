@@ -159,7 +159,7 @@ router.post('/analyze', async (req, res) => {
     const prompt = buildSingleGamePrompt(stats, player_name, match_info || {});
 
     const message = await client.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -211,7 +211,7 @@ router.post('/analyze-player', async (req, res) => {
     const prompt = buildAcrossGamesPrompt(player_name, aggregated_stats, recent_games);
 
     const message = await client.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     });
