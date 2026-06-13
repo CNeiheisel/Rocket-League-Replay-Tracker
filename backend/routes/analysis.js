@@ -9,6 +9,37 @@ const Groq = require('groq-sdk');
 
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Robustly extract JSON from model output even if it includes
+// extra text, markdown fences, or gets cut off mid-string
+function extractJson(text) {
+  // Strip markdown code fences
+  let clean = text.replace(/```json|```/g, '').trim();
+
+  // Find the first { and last } to isolate the JSON object
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+
+  if (start === -1 || end === -1) {
+    throw new Error('No JSON object found in model response');
+  }
+
+  clean = clean.slice(start, end + 1);
+
+  try {
+    return JSON.parse(clean);
+  } catch {
+    // If still invalid, attempt to truncate at last complete array/object
+    // by finding the last complete "advice" entry
+    const safeEnd = clean.lastIndexOf('},');
+    if (safeEnd > 0) {
+      // Close off the advice array and object
+      const truncated = clean.slice(0, safeEnd + 1) + '],"focus_for_next_game":"See individual advice items above."}';
+      return JSON.parse(truncated);
+    }
+    throw new Error('Could not parse model response as JSON');
+  }
+}
+
 // ============ HELPERS ============
 
 function buildSingleGamePrompt(stats, playerName, matchInfo) {
@@ -160,13 +191,12 @@ router.post('/analyze', async (req, res) => {
 
     const message = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: 1000,
+      max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });
 
     const text = message.choices[0].message.content;
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    const parsed = extractJson(text);
 
     return res.json({
       success: true,
@@ -212,13 +242,12 @@ router.post('/analyze-player', async (req, res) => {
 
     const message = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: 1000,
+      max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });
 
     const text = message.choices[0].message.content;
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    const parsed = extractJson(text);
 
     return res.json({
       success: true,
