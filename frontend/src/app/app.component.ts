@@ -6,6 +6,7 @@ import { AiCoachComponent } from './ai-coach/ai-coach.component';
 import { StartScreenComponent } from './start-screen/start-screen.component';
 import { PlayersListComponent } from './players-list/players-list.component';
 import { ReplayListComponent } from './replay-list/replay-list.component';
+import { ReplayShowcaseComponent } from './replay-showcase/replay-showcase.component';
 import { Player, ReplayMatch, TrendPoint } from './models/replay-tracker.models';
 import { ReplayTrackerApiService } from './services/replay-tracker-api.service';
 
@@ -18,7 +19,8 @@ import { ReplayTrackerApiService } from './services/replay-tracker-api.service';
     AiCoachComponent,
     StartScreenComponent,
     PlayersListComponent,
-    ReplayListComponent
+    ReplayListComponent,
+    ReplayShowcaseComponent
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']

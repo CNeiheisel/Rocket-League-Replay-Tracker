@@ -1,28 +1,81 @@
 <div class="card">
-  <h2 class="title">Rocket League AI Coach</h2>
-  <p class="subtitle">AI-powered performance analysis and training recommendations.</p>
+  <h2 class="title">AI Coach</h2>
+  <p class="subtitle">Groq-powered performance analysis based on your real game data.</p>
 
-  <div class="form-grid">
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button
+      class="toggle-btn"
+      [class.active]="mode === 'across'"
+      (click)="mode = 'across'; analysis = null; error = ''"
+      type="button"
+    >
+      Across All Games
+    </button>
+    <button
+      class="toggle-btn"
+      [class.active]="mode === 'single'"
+      (click)="mode = 'single'; analysis = null; error = ''"
+      type="button"
+    >
+      Single Game
+    </button>
+  </div>
+
+  <!-- Across Games Mode -->
+  <div *ngIf="mode === 'across'" class="form-grid">
     <div>
-      <label class="label">Current Rank</label>
-      <select class="select-field" [(ngModel)]="currentRank">
-        <option *ngFor="let rank of ranks" [value]="rank">{{ rank }}</option>
+      <label class="label">Select Player</label>
+      <select class="select-field" [(ngModel)]="selectedPlayerId">
+        <option [ngValue]="null">Choose a player...</option>
+        <option *ngFor="let player of players" [ngValue]="player.playerId">
+          {{ player.playerName }} ({{ player.matchesPlayed }} games)
+        </option>
+      </select>
+      <p class="hint" *ngIf="players.length === 0">
+        No players found. Import replays first.
+      </p>
+    </div>
+  </div>
+
+  <!-- Single Game Mode -->
+  <div *ngIf="mode === 'single'" class="form-grid">
+    <div>
+      <label class="label">Select Replay</label>
+      <select class="select-field" [(ngModel)]="selectedMatchId" (ngModelChange)="onMatchSelected()">
+        <option [ngValue]="null">Choose a replay...</option>
+        <option *ngFor="let match of matches" [ngValue]="match.matchId">
+          {{ match.mapName || 'Unknown Map' }} — {{ match.matchDate | date:'mediumDate' }}
+          ({{ match.blueScore ?? 0 }}–{{ match.orangeScore ?? 0 }})
+        </option>
       </select>
     </div>
 
-    <div class="metrics-grid">
-      <ng-container *ngFor="let metricKey of metricKeys">
-        <div>
-          <label class="label">{{ formatLabel(metricKey) }}</label>
-          <input class="input-field" type="number" [(ngModel)]="playerMetrics[metricKey]" />
-        </div>
-      </ng-container>
+    <div *ngIf="matchPlayers.length > 0">
+      <label class="label">Select Player</label>
+      <select class="select-field" [(ngModel)]="selectedMatchPlayerName">
+        <option [ngValue]="null">Choose a player...</option>
+        <option *ngFor="let p of matchPlayers" [ngValue]="p.name">
+          {{ p.name }} ({{ p.team }})
+        </option>
+      </select>
     </div>
 
-    <button class="button-primary" (click)="analyzePlayer()" [disabled]="loading">
-      {{ loading ? 'Analyzing...' : 'Analyze Player' }}
-    </button>
+    <p class="hint" *ngIf="selectedMatchId && matchPlayers.length === 0">
+      No player data for this replay. Try re-importing it.
+    </p>
   </div>
+
+  <button
+    class="button-primary"
+    type="button"
+    (click)="analyze()"
+    [disabled]="loading || !canAnalyze"
+  >
+    {{ loading ? 'Analyzing...' : 'Get Coaching' }}
+  </button>
+
+  <p class="error-msg" *ngIf="error">{{ error }}</p>
 </div>
 
 <app-analysis-card [analysis]="analysis"></app-analysis-card>
