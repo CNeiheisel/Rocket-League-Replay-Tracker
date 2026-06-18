@@ -1,11 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ReplayShowcaseComponent } from '../replay-showcase/replay-showcase.component';
 
 @Component({
   selector: 'app-start-screen',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReplayShowcaseComponent],
   templateUrl: './start-screen.component.html',
   styleUrls: ['./start-screen.component.css']
 })
