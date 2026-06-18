@@ -235,20 +235,19 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     this.animationFrameId = requestAnimationFrame(step);
   }
 
+  private elapsedPlaybackTime = 0;
+
   private advanceFrame(deltaSeconds: number): void {
     if (!this.replay) return;
     const frames = this.replay.frames;
 
-    // TEMP DEBUG
-    console.log('advanceFrame called', {
-      deltaSeconds,
-      currentFrameIndex: this.currentFrameIndex,
-      currentTime: frames[this.currentFrameIndex]?.time,
-      isPlaying: this.isPlaying
-    });
+    // Accumulate real elapsed time across calls instead of recomputing
+    // relative to the current frame's own timestamp (which never grows
+    // and caused playback to freeze on frame 0 permanently).
+    this.elapsedPlaybackTime += deltaSeconds * this.playbackSpeed;
 
-    // Advance currentFrameIndex based on elapsed real time vs frame timestamps
-    let targetTime = (frames[this.currentFrameIndex]?.time ?? 0) + deltaSeconds * this.playbackSpeed;
+    const startTime = frames[0]?.time ?? 0;
+    const targetTime = startTime + this.elapsedPlaybackTime;
 
     while (
       this.currentFrameIndex < frames.length - 1 &&
@@ -260,6 +259,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     // Loop back to start when reaching the end
     if (this.currentFrameIndex >= frames.length - 1) {
       this.currentFrameIndex = 0;
+      this.elapsedPlaybackTime = 0;
     }
 
     const frame = frames[this.currentFrameIndex];
