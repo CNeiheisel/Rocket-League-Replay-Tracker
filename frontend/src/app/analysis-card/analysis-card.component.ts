@@ -11,8 +11,4 @@ import { PlayerAnalysis } from '../ai-coach/ai-coach.component';
 })
 export class AnalysisCardComponent {
   @Input() analysis: PlayerAnalysis | null = null;
-
-  formatLabel(value: string): string {
-    return value.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
-  }
 }

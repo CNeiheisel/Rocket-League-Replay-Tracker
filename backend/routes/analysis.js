@@ -1,132 +1,282 @@
 /**
  * API routes for AI Coach analysis
- * Express.js routes
+ * Uses Groq (free) for intelligent coaching advice
  */
 
 const express = require('express');
 const router = express.Router();
-const { analyzePlayerStats } = require('../ai_coach/analyzer');
-const { RANK_BENCHMARKS } = require('../ai_coach/benchmarks');
+const Groq = require('groq-sdk');
+
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// Robustly extract JSON from model output even if it includes
+// extra text, markdown fences, or gets cut off mid-string
+function extractJson(text) {
+  // Strip markdown code fences
+  let clean = text.replace(/```json|```/g, '').trim();
+
+  // Find the first { and last } to isolate the JSON object
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+
+  if (start === -1 || end === -1) {
+    throw new Error('No JSON object found in model response');
+  }
+
+  clean = clean.slice(start, end + 1);
+
+  try {
+    return JSON.parse(clean);
+  } catch {
+    // If still invalid, attempt to truncate at last complete array/object
+    // by finding the last complete "advice" entry
+    const safeEnd = clean.lastIndexOf('},');
+    if (safeEnd > 0) {
+      // Close off the advice array and object
+      const truncated = clean.slice(0, safeEnd + 1) + '],"focus_for_next_game":"See individual advice items above."}';
+      return JSON.parse(truncated);
+    }
+    throw new Error('Could not parse model response as JSON');
+  }
+}
+
+// ============ HELPERS ============
+
+function buildSingleGamePrompt(stats, playerName, matchInfo) {
+  return `You are an expert Rocket League coach analyzing a single game for player "${playerName}".
+
+Match info:
+- Map: ${matchInfo.map_name || 'Unknown'}
+- Mode: ${matchInfo.game_mode || 'Standard'}
+- Team: ${stats.team || 'Unknown'}
+- Result: ${matchInfo.winning_team === stats.team ? 'WIN' : 'LOSS'}
+- Score: Blue ${matchInfo.blue_score ?? 0} - Orange ${matchInfo.orange_score ?? 0}
+
+Player stats for this game:
+- Score: ${stats.score ?? 0}
+- Goals: ${stats.goals ?? 0}
+- Assists: ${stats.assists ?? 0}
+- Saves: ${stats.saves ?? 0}
+- Shots: ${stats.shots ?? 0}
+- Shooting %: ${stats.shooting_percentage != null ? Number(stats.shooting_percentage).toFixed(1) : 'N/A'}%
+- MVP: ${stats.mvp ? 'Yes' : 'No'}
+
+Positioning:
+- Time in defensive third: ${stats.time_defensive_third != null ? Number(stats.time_defensive_third).toFixed(1) : 'N/A'}s (${stats.percent_defensive_third != null ? Number(stats.percent_defensive_third).toFixed(1) : 'N/A'}%)
+- Time in offensive third: ${stats.time_offensive_third != null ? Number(stats.time_offensive_third).toFixed(1) : 'N/A'}s (${stats.percent_offensive_third != null ? Number(stats.percent_offensive_third).toFixed(1) : 'N/A'}%)
+- Time behind ball: ${stats.percent_behind_ball != null ? Number(stats.percent_behind_ball).toFixed(1) : 'N/A'}%
+- Time in front of ball: ${stats.percent_infront_ball != null ? Number(stats.percent_infront_ball).toFixed(1) : 'N/A'}%
+- Time most back (last defender): ${stats.time_most_back != null ? Number(stats.time_most_back).toFixed(1) : 'N/A'}s
+- Time most forward: ${stats.time_most_forward != null ? Number(stats.time_most_forward).toFixed(1) : 'N/A'}s
+
+Boost:
+- Avg boost amount: ${stats.boost_avg_amount != null ? Number(stats.boost_avg_amount).toFixed(1) : 'N/A'}
+- Boost collected: ${stats.boost_collected ?? 'N/A'}
+- Boost stolen from opponents: ${stats.boost_stolen ?? 'N/A'}
+- Time at zero boost: ${stats.time_zero_boost != null ? Number(stats.time_zero_boost).toFixed(1) : 'N/A'}s
+- Time at full boost: ${stats.time_full_boost != null ? Number(stats.time_full_boost).toFixed(1) : 'N/A'}s
+
+Movement:
+- Avg speed: ${stats.avg_speed ?? 'N/A'}
+- Time supersonic: ${stats.time_supersonic != null ? Number(stats.time_supersonic).toFixed(1) : 'N/A'}s
+- Time on ground: ${stats.percent_ground != null ? Number(stats.percent_ground).toFixed(1) : 'N/A'}%
+- Time in low air: ${stats.percent_low_air != null ? Number(stats.percent_low_air).toFixed(1) : 'N/A'}%
+- Time in high air: ${stats.percent_high_air != null ? Number(stats.percent_high_air).toFixed(1) : 'N/A'}%
+
+Demos:
+- Demos inflicted: ${stats.demos_inflicted ?? 0}
+- Demos taken: ${stats.demos_taken ?? 0}
+
+Give specific, actionable coaching feedback on this single game. Be direct and concise.
+Identify 2 key things they did well and 2-3 specific areas to improve based on the actual numbers.
+Reference the specific stats when giving advice (e.g. "spending 79% of the game behind the ball suggests you were playing too passively").
+End with one focused drill or habit to work on before their next game.
+
+You MUST respond with only valid JSON and nothing else — no explanation, no markdown, no code fences. Return exactly this structure:
+{
+  "overall_assessment": "2-3 sentence summary of their performance this game",
+  "strengths": [
+    { "title": "strength title", "detail": "specific detail referencing their stats" }
+  ],
+  "advice": [
+    {
+      "priority": 1,
+      "title": "area title",
+      "advice": "specific advice referencing their actual numbers",
+      "drills": ["drill 1", "drill 2"]
+    }
+  ],
+  "focus_for_next_game": "one specific thing to focus on next game"
+}`;
+}
+
+function buildAcrossGamesPrompt(playerName, aggregatedStats, recentGames) {
+  const gamesPlayed = recentGames.length;
+  const wins = recentGames.filter(g => g.won).length;
+  const winRate = gamesPlayed > 0 ? (wins / gamesPlayed * 100).toFixed(1) : '0.0';
+
+  return `You are an expert Rocket League coach analyzing ${gamesPlayed} games for player "${playerName}".
+
+Overall averages across ${gamesPlayed} games:
+- Win rate: ${winRate}%
+- Avg score: ${aggregatedStats.avg_score != null ? Number(aggregatedStats.avg_score).toFixed(0) : 'N/A'}
+- Avg goals: ${aggregatedStats.avg_goals != null ? Number(aggregatedStats.avg_goals).toFixed(2) : 'N/A'}
+- Avg assists: ${aggregatedStats.avg_assists != null ? Number(aggregatedStats.avg_assists).toFixed(2) : 'N/A'}
+- Avg saves: ${aggregatedStats.avg_saves != null ? Number(aggregatedStats.avg_saves).toFixed(2) : 'N/A'}
+- Avg shots: ${aggregatedStats.avg_shots != null ? Number(aggregatedStats.avg_shots).toFixed(2) : 'N/A'}
+- Shooting %: ${aggregatedStats.avg_shooting_pct != null ? Number(aggregatedStats.avg_shooting_pct).toFixed(1) : 'N/A'}%
+- MVPs: ${aggregatedStats.mvp_count ?? 0}
+
+Positioning averages:
+- Time in defensive third: ${aggregatedStats.avg_defensive_third != null ? Number(aggregatedStats.avg_defensive_third).toFixed(1) : 'N/A'}s
+- Time in offensive third: ${aggregatedStats.avg_offensive_third != null ? Number(aggregatedStats.avg_offensive_third).toFixed(1) : 'N/A'}s
+- Time behind ball: ${aggregatedStats.avg_behind_ball != null ? Number(aggregatedStats.avg_behind_ball).toFixed(1) : 'N/A'}%
+- Time in front of ball: ${aggregatedStats.avg_infront_ball != null ? Number(aggregatedStats.avg_infront_ball).toFixed(1) : 'N/A'}%
+
+Boost averages:
+- Avg boost amount: ${aggregatedStats.avg_boost_amount != null ? Number(aggregatedStats.avg_boost_amount).toFixed(1) : 'N/A'}
+- Avg boost stolen: ${aggregatedStats.avg_boost_stolen != null ? Number(aggregatedStats.avg_boost_stolen).toFixed(0) : 'N/A'}
+- Avg time at zero boost: ${aggregatedStats.avg_zero_boost != null ? Number(aggregatedStats.avg_zero_boost).toFixed(1) : 'N/A'}s
+
+Movement averages:
+- Avg speed: ${aggregatedStats.avg_speed != null ? Number(aggregatedStats.avg_speed).toFixed(0) : 'N/A'}
+- Avg time supersonic: ${aggregatedStats.avg_supersonic != null ? Number(aggregatedStats.avg_supersonic).toFixed(1) : 'N/A'}s
+
+Recent game results (last ${Math.min(5, recentGames.length)} games):
+${recentGames.slice(0, 5).map((g, i) =>
+  `Game ${i + 1}: ${g.won ? 'WIN' : 'LOSS'} | Goals: ${g.goals} | Assists: ${g.assists} | Saves: ${g.saves} | Score: ${g.score}`
+).join('\n')}
+
+Analyze patterns across these games. Look for consistent habits, both good and bad.
+Identify trends (e.g. "you consistently spend too much time in the defensive third" or "your saves spike in losses suggesting defensive scrambling").
+Give advice that addresses root causes, not just symptoms.
+
+You MUST respond with only valid JSON and nothing else — no explanation, no markdown, no code fences. Return exactly this structure:
+{
+  "overall_assessment": "2-3 sentence summary of their performance across these games mentioning trends",
+  "strengths": [
+    { "title": "strength title", "detail": "specific detail referencing their stats across games" }
+  ],
+  "advice": [
+    {
+      "priority": 1,
+      "title": "area title",
+      "advice": "specific advice referencing their actual numbers and patterns across games",
+      "drills": ["drill 1", "drill 2"]
+    }
+  ],
+  "focus_for_next_game": "one specific habit to build based on their patterns"
+}`;
+}
+
+// ============ ROUTES ============
 
 /**
  * POST /api/analysis/analyze
- * Analyze player statistics and return improvement advice
+ * Analyze a single game for a player using Groq
  */
-router.post('/analyze', (req, res) => {
+router.post('/analyze', async (req, res) => {
   try {
-    const { stats, current_rank, target_rank } = req.body;
+    const { player_name, stats, match_info } = req.body;
 
     if (!stats || Object.keys(stats).length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Stats object is required'
-      });
+      return res.status(400).json({ success: false, error: 'Stats object is required' });
     }
 
-    if (!current_rank) {
-      return res.status(400).json({
-        success: false,
-        error: 'current_rank is required'
-      });
+    if (!player_name) {
+      return res.status(400).json({ success: false, error: 'player_name is required' });
     }
 
-    // Perform analysis
-    const result = analyzePlayerStats(stats, current_rank, target_rank);
+    const prompt = buildSingleGamePrompt(stats, player_name, match_info || {});
 
-    return res.json(result);
+    const message = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const text = message.choices[0].message.content;
+    const parsed = extractJson(text);
+
+    return res.json({
+      success: true,
+      overall_assessment: parsed.overall_assessment,
+      strengths: parsed.strengths || [],
+      advice: (parsed.advice || []).map((a, i) => ({
+        priority: a.priority ?? i + 1,
+        title: a.title,
+        advice: a.advice,
+        drills: a.drills || []
+      })),
+      focus_for_next_game: parsed.focus_for_next_game || '',
+      all_gaps: []
+    });
 
   } catch (error) {
     console.error('Analysis error:', error);
-    return res.status(500).json({
-      success: false,
-      error: `Analysis failed: ${error.message}`
-    });
+    return res.status(500).json({ success: false, error: `Analysis failed: ${error.message}` });
   }
 });
 
 /**
- * POST /api/analysis/batch-analyze
- * Analyze multiple players or games at once
+ * POST /api/analysis/analyze-player
+ * Analyze a player across all their imported games using Groq
  */
-router.post('/batch-analyze', (req, res) => {
+router.post('/analyze-player', async (req, res) => {
   try {
-    const { games } = req.body;
+    const { player_name, aggregated_stats, recent_games } = req.body;
 
-    if (!games || !Array.isArray(games) || games.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Games array is required'
-      });
+    if (!player_name) {
+      return res.status(400).json({ success: false, error: 'player_name is required' });
     }
 
-    const results = games.map(game => {
-      return analyzePlayerStats(
-        game.stats || {},
-        game.current_rank || 'Gold',
-        game.target_rank || null
-      );
+    if (!aggregated_stats) {
+      return res.status(400).json({ success: false, error: 'aggregated_stats is required' });
+    }
+
+    if (!recent_games || recent_games.length === 0) {
+      return res.status(400).json({ success: false, error: 'recent_games array is required' });
+    }
+
+    const prompt = buildAcrossGamesPrompt(player_name, aggregated_stats, recent_games);
+
+    const message = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
     });
+
+    const text = message.choices[0].message.content;
+    const parsed = extractJson(text);
 
     return res.json({
       success: true,
-      count: results.length,
-      results
+      overall_assessment: parsed.overall_assessment,
+      strengths: parsed.strengths || [],
+      advice: (parsed.advice || []).map((a, i) => ({
+        priority: a.priority ?? i + 1,
+        title: a.title,
+        advice: a.advice,
+        drills: a.drills || []
+      })),
+      focus_for_next_game: parsed.focus_for_next_game || '',
+      all_gaps: []
     });
 
   } catch (error) {
-    console.error('Batch analysis error:', error);
-    return res.status(500).json({
-      success: false,
-      error: `Batch analysis failed: ${error.message}`
-    });
-  }
-});
-
-/**
- * GET /api/analysis/benchmarks
- * Get benchmark data for all ranks or a specific rank
- */
-router.get('/benchmarks', (req, res) => {
-  try {
-    const { rank } = req.query;
-
-    if (rank) {
-      if (RANK_BENCHMARKS[rank]) {
-        return res.json({
-          success: true,
-          rank,
-          benchmarks: RANK_BENCHMARKS[rank]
-        });
-      } else {
-        return res.status(404).json({
-          success: false,
-          error: `Rank '${rank}' not found`
-        });
-      }
-    }
-
-    return res.json({
-      success: true,
-      benchmarks: RANK_BENCHMARKS
-    });
-
-  } catch (error) {
-    console.error('Benchmarks error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Across-games analysis error:', error);
+    return res.status(500).json({ success: false, error: `Analysis failed: ${error.message}` });
   }
 });
 
 /**
  * GET /api/analysis/health
- * Health check endpoint
  */
 router.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    service: 'RL AI Coach'
+    service: 'RL AI Coach',
+    groq: !!process.env.GROQ_API_KEY
   });
 });
 
