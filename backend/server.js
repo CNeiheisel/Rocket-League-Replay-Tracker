@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const fs = require('fs');
 
 const analysisRoutes = require('./routes/analysis');
 
@@ -67,127 +68,24 @@ pool.on('error', (err) => {
   console.error('Unexpected Postgres client error', err);
 });
 
-const CPP_PARSER_PATH = './replay_parser';
-
 // ============ UTILITY FUNCTIONS ============
 
 const BALLCHASING_API_KEY = process.env.BALLCHASING_API_KEY;
 
 if (!BALLCHASING_API_KEY) {
-  console.warn("WARNING: BALLCHASING_API_KEY is not set — falling back to DB for match listing.");
+  console.warn("WARNING: BALLCHASING_API_KEY is not set.");
 } else {
   console.log("API key loaded successfully!");
 }
 
-// ============ API ENDPOINTS ============
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
-});
-
-// Get all matches (DB-sourced, with players joined in)
-// FIX: This is now the primary matches endpoint used by the frontend.
-// It includes player names and teams so the replays page shows rosters correctly.
-app.get('/api/matches', async (req, res) => {
-  try {
-    const { limit = 50, offset = 0, player_id, team } = req.query;
-
-    let query = `
-      SELECT m.match_id, m.match_date, m.map_name, m.game_mode, m.duration,
-             m.blue_score, m.orange_score, m.winning_team, m.replay_file_path,
-             COUNT(DISTINCT ps.player_id) as player_count
-      FROM matches m
-      LEFT JOIN player_stats ps ON m.match_id = ps.match_id
-    `;
-
-    const conditions = [];
-    const params = [];
-
-    if (player_id) {
-      conditions.push(`ps.player_id = $${params.length + 1}`);
-      params.push(player_id);
-    }
-
-    if (team) {
-      conditions.push(`ps.team = $${params.length + 1}`);
-      params.push(team);
-    }
-
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    query += ` GROUP BY m.match_id, m.match_date, m.map_name, m.game_mode, m.duration,
-                         m.blue_score, m.orange_score, m.winning_team, m.replay_file_path
-               ORDER BY m.match_date DESC
-               LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(limit, offset);
-
-    const result = await pool.query(query, params);
-    const rows = result.rows || [];
-
-    // FIX: Enrich each match row with its players from player_stats.
-    // Previously this endpoint returned bare match rows with no player data,
-    // so the replays page showed "No players listed" for every match.
-    const enriched = await Promise.all(rows.map(async (row) => {
-      const pRes = await pool.query(`
-        SELECT p.player_name AS name, ps.team
-        FROM player_stats ps
-        JOIN players p ON ps.player_id = p.player_id
-        WHERE ps.match_id = $1
-        ORDER BY ps.team, p.player_name
-      `, [row.match_id]);
-
-      return {
-        ...row,
-        players: pRes.rows || []
-      };
-    }));
-
-    res.json(enriched);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Get match details with player stats
-app.get('/api/matches/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const matchQuery = await pool.query('SELECT * FROM matches WHERE match_id = $1', [id]);
-
-    if (matchQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'Match not found' });
-    }
-
-    const statsQuery = await pool.query(`
-      SELECT ps.*, p.player_name, p.platform
-      FROM player_stats ps
-      JOIN players p ON ps.player_id = p.player_id
-      WHERE ps.match_id = $1
-      ORDER BY ps.score DESC
-    `, [id]);
-
-    res.json({
-      match: matchQuery.rows[0],
-      players: statsQuery.rows
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+// Path to the hardcoded showcase replay JSON (pre-processed frame data)
+const SHOWCASE_REPLAY_PATH = path.resolve(__dirname, 'data', 'showcase-replay.json');
 
 // Parse replay using BallChasing API
 async function parseReplayFromBallChasing(replayId) {
   try {
     const response = await fetch(`https://ballchasing.com/api/replays/${replayId}`, {
-      headers: {
-        'Authorization': BALLCHASING_API_KEY
-      }
+      headers: { 'Authorization': BALLCHASING_API_KEY }
     });
 
     if (!response.ok) {
@@ -255,6 +153,152 @@ async function parseReplayFromBallChasing(replayId) {
   }
 }
 
+// ============ API ENDPOINTS ============
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Serve the hardcoded showcase replay used on the front page
+app.get('/api/showcase-replay', (req, res) => {
+  fs.readFile(SHOWCASE_REPLAY_PATH, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Failed to read showcase replay:', err);
+      return res.status(404).json({ error: 'Showcase replay not found' });
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(data);
+  });
+});
+
+// Get all matches (DB-sourced, with players joined in)
+app.get('/api/matches', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, player_id, team } = req.query;
+
+    let query = `
+      SELECT m.match_id, m.match_date, m.map_name, m.game_mode, m.duration,
+             m.blue_score, m.orange_score, m.winning_team, m.replay_file_path,
+             COUNT(DISTINCT ps.player_id) as player_count
+      FROM matches m
+      LEFT JOIN player_stats ps ON m.match_id = ps.match_id
+    `;
+
+    const conditions = [];
+    const params = [];
+
+    if (player_id) {
+      conditions.push(`ps.player_id = $${params.length + 1}`);
+      params.push(player_id);
+    }
+
+    if (team) {
+      conditions.push(`ps.team = $${params.length + 1}`);
+      params.push(team);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ` GROUP BY m.match_id, m.match_date, m.map_name, m.game_mode, m.duration,
+                         m.blue_score, m.orange_score, m.winning_team, m.replay_file_path
+               ORDER BY m.match_date DESC
+               LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+    const rows = result.rows || [];
+
+    const enriched = await Promise.all(rows.map(async (row) => {
+      const pRes = await pool.query(`
+        SELECT p.player_name AS name, ps.team
+        FROM player_stats ps
+        JOIN players p ON ps.player_id = p.player_id
+        WHERE ps.match_id = $1
+        ORDER BY ps.team, p.player_name
+      `, [row.match_id]);
+
+      return { ...row, players: pRes.rows || [] };
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get match details with player stats
+app.get('/api/matches/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const matchQuery = await pool.query('SELECT * FROM matches WHERE match_id = $1', [id]);
+
+    if (matchQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const statsQuery = await pool.query(`
+      SELECT ps.*, p.player_name, p.platform
+      FROM player_stats ps
+      JOIN players p ON ps.player_id = p.player_id
+      WHERE ps.match_id = $1
+      ORDER BY ps.score DESC
+    `, [id]);
+
+    res.json({
+      match: matchQuery.rows[0],
+      players: statsQuery.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get full player stats for a match — used by AI coach single game mode
+app.get('/api/matches/:id/player-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const matchResult = await pool.query('SELECT * FROM matches WHERE match_id = $1', [id]);
+
+    if (matchResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const match = matchResult.rows[0];
+
+    const statsResult = await pool.query(`
+      SELECT ps.*, p.player_name, p.platform
+      FROM player_stats ps
+      JOIN players p ON ps.player_id = p.player_id
+      WHERE ps.match_id = $1
+      ORDER BY ps.score DESC
+    `, [id]);
+
+    res.json({
+      match: {
+        match_id: match.match_id,
+        map_name: match.map_name,
+        game_mode: match.game_mode,
+        match_date: match.match_date,
+        blue_score: match.blue_score,
+        orange_score: match.orange_score,
+        winning_team: match.winning_team
+      },
+      players: statsResult.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Import replay by BallChasing ID
 app.post('/api/replays/import', async (req, res) => {
   const client = await pool.connect();
@@ -266,7 +310,6 @@ app.post('/api/replays/import', async (req, res) => {
       return res.status(400).json({ error: 'No replay_id provided' });
     }
 
-    // Check if replay already exists
     const existingReplay = await client.query(
       'SELECT match_id FROM matches WHERE replay_file_path = $1',
       [replay_id]
@@ -375,11 +418,7 @@ app.post('/api/replays/batch-import', async (req, res) => {
       return res.status(400).json({ error: 'Invalid replay_ids array' });
     }
 
-    const results = {
-      success: [],
-      failed: [],
-      skipped: []
-    };
+    const results = { success: [], failed: [], skipped: [] };
 
     for (const replay_id of replay_ids) {
       try {
@@ -410,7 +449,7 @@ app.post('/api/replays/batch-import', async (req, res) => {
   }
 });
 
-// Get player statistics
+// Get player statistics (leaderboard)
 app.get('/api/players', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -472,6 +511,76 @@ app.get('/api/players/:id', async (req, res) => {
       player: playerQuery.rows[0],
       recent_matches: recentMatchesQuery.rows
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get aggregated stats + recent games for a player — used by AI coach across-games mode
+app.get('/api/players/:id/match-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const aggResult = await pool.query(`
+      SELECT
+        p.player_name,
+        COUNT(DISTINCT ps.match_id) AS games_played,
+        AVG(ps.score) AS avg_score,
+        AVG(ps.goals) AS avg_goals,
+        AVG(ps.assists) AS avg_assists,
+        AVG(ps.saves) AS avg_saves,
+        AVG(ps.shots) AS avg_shots,
+        SUM(CASE WHEN ps.mvp THEN 1 ELSE 0 END) AS mvp_count,
+        AVG(ps.time_defensive_third) AS avg_defensive_third,
+        AVG(ps.time_offensive_third) AS avg_offensive_third,
+        AVG(ps.percent_behind_ball) AS avg_behind_ball,
+        AVG(ps.percent_infront_ball) AS avg_infront_ball,
+        AVG(ps.boost_avg_amount) AS avg_boost_amount,
+        AVG(ps.boost_stolen) AS avg_boost_stolen,
+        AVG(ps.time_zero_boost) AS avg_zero_boost,
+        AVG(ps.avg_speed) AS avg_speed,
+        AVG(ps.time_supersonic) AS avg_supersonic,
+        AVG(CASE WHEN ps.shots > 0 THEN (ps.goals::float / ps.shots) * 100 ELSE 0 END) AS avg_shooting_pct
+      FROM players p
+      JOIN player_stats ps ON p.player_id = ps.player_id
+      WHERE p.player_id = $1
+      GROUP BY p.player_id, p.player_name
+    `, [id]);
+
+    if (aggResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found or no stats available' });
+    }
+
+    const recentResult = await pool.query(`
+      SELECT
+        ps.goals, ps.assists, ps.saves, ps.score, ps.shots,
+        ps.team, ps.mvp, m.winning_team, m.match_date, m.map_name
+      FROM player_stats ps
+      JOIN matches m ON ps.match_id = m.match_id
+      WHERE ps.player_id = $1
+      ORDER BY m.match_date DESC
+      LIMIT 20
+    `, [id]);
+
+    const recentGames = recentResult.rows.map(g => ({
+      goals: g.goals,
+      assists: g.assists,
+      saves: g.saves,
+      score: g.score,
+      shots: g.shots,
+      mvp: g.mvp,
+      won: g.team === g.winning_team,
+      match_date: g.match_date,
+      map_name: g.map_name
+    }));
+
+    res.json({
+      player_name: aggResult.rows[0].player_name,
+      aggregated_stats: aggResult.rows[0],
+      recent_games: recentGames
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
