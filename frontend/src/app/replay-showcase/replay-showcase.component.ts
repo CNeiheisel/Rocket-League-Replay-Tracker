@@ -239,6 +239,14 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     if (!this.replay) return;
     const frames = this.replay.frames;
 
+    // TEMP DEBUG
+    console.log('advanceFrame called', {
+      deltaSeconds,
+      currentFrameIndex: this.currentFrameIndex,
+      currentTime: frames[this.currentFrameIndex]?.time,
+      isPlaying: this.isPlaying
+    });
+
     // Advance currentFrameIndex based on elapsed real time vs frame timestamps
     let targetTime = (frames[this.currentFrameIndex]?.time ?? 0) + deltaSeconds * this.playbackSpeed;
 
