@@ -165,9 +165,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     sun.shadow.camera.bottom = -600;
     this.scene.add(sun);
 
-    this.scene.add(Object.assign(new THREE.DirectionalLight(0x4466cc, 0.5), {
-      position: new THREE.Vector3(-200, 300, -200)
-    }));
+    const fillLight = new THREE.DirectionalLight(0x4466cc, 0.5);
+    fillLight.position.set(-200, 300, -200);
+    this.scene.add(fillLight);
 
     this.buildField();
     this.buildBall();
