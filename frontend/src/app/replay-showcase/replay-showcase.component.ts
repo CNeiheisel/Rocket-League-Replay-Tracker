@@ -61,7 +61,8 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private animationFrameId: number | null = null;
   private lastTimestamp = 0;
   private playbackSpeed = 1;
-  private resizeObserver: ResizeObserver | null = null;
+  private sceneReady = false;
+  private pendingSetupCars = false;
 
   private readonly teamColors: Record<string, number> = {
     blue:    0x3b82f6,
@@ -75,6 +76,13 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
   ngAfterViewInit(): void {
     this.initScene();
+    this.sceneReady = true;
+    // If replay loaded before scene was ready, set up cars now
+    if (this.pendingSetupCars) {
+      this.pendingSetupCars = false;
+      this.setupCars();
+      this.startAnimation();
+    }
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(this.canvasContainer.nativeElement);
   }
@@ -96,8 +104,12 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.orangeScore = this.replay.orange_score;
       this.playerNames = [...new Set(this.replay.frames[0]?.players.map(p => p.name) ?? [])];
       this.loading = false;
-      this.setupCars();
-      this.startAnimation();
+      if (this.sceneReady) {
+        this.setupCars();
+        this.startAnimation();
+      } else {
+        this.pendingSetupCars = true;
+      }
     } catch (err) {
       console.error('Failed to load showcase replay:', err);
       this.error = 'Could not load the replay preview.';
@@ -130,8 +142,8 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
     // Fixed angled camera — looking from one corner down at the field
     this.camera = new THREE.PerspectiveCamera(55, width / height, 1, 2000);
-    this.camera.position.set(320, 260, 380);
-    this.camera.lookAt(0, 30, 0);
+    this.camera.position.set(280, 420, 340);
+    this.camera.lookAt(0, 0, 0);
 
     // WebGL renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
