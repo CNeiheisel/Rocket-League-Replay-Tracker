@@ -61,6 +61,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private animationFrameId: number | null = null;
   private lastTimestamp = 0;
   private playbackSpeed = 1;
+  private resizeObserver: ResizeObserver | null = null;
   private sceneReady = false;
   private pendingSetupCars = false;
 
