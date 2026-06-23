@@ -22,15 +22,14 @@ interface ShowcaseReplay {
   frames: ShowcaseFrame[];
 }
 
-// Real Rocket League field dimensions in Unreal units
 const FIELD_LENGTH = 10240;
-const FIELD_WIDTH = 8192;
+const FIELD_WIDTH  = 8192;
 const FIELD_HEIGHT = 2044;
-const BALL_RADIUS = 92;
-const CAR_LENGTH = 120;
-const CAR_WIDTH = 85;
-const CAR_HEIGHT = 36;
-const SCALE = 0.05;
+const BALL_RADIUS  = 92;
+const CAR_LENGTH   = 120;
+const CAR_WIDTH    = 85;
+const CAR_HEIGHT   = 36;
+const SCALE        = 0.05;
 
 @Component({
   selector: 'app-replay-showcase',
@@ -55,8 +54,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private renderer!: THREE.WebGLRenderer;
   private labelRenderer!: CSS2DRenderer;
   private ball!: THREE.Mesh;
-  private carMeshes = new Map<string, THREE.Mesh>();
-  private labelObjects = new Map<string, CSS2DObject>();
+  private carGroups = new Map<string, THREE.Group>();
   private replay: ShowcaseReplay | null = null;
   private currentFrameIndex = 0;
   private elapsedPlaybackTime = 0;
@@ -65,23 +63,15 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private playbackSpeed = 1;
   private resizeObserver: ResizeObserver | null = null;
 
-  // Camera orbit state
-  private cameraAngle = 0;
-  private readonly CAMERA_RADIUS = 420;
-  private readonly CAMERA_HEIGHT = 280;
-  private readonly CAMERA_ORBIT_SPEED = 0.04; // radians per second
-
   private readonly teamColors: Record<string, number> = {
-    blue: 0x3b82f6,
-    orange: 0xf97316,
-    unknown: 0x999999
+    blue:    0x3b82f6,
+    orange:  0xf97316,
+    unknown: 0x888888
   };
 
   constructor(private readonly http: HttpClient) {}
 
-  ngOnInit(): void {
-    this.loadReplay();
-  }
+  ngOnInit(): void { this.loadReplay(); }
 
   ngAfterViewInit(): void {
     this.initScene();
@@ -90,12 +80,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   ngOnDestroy(): void {
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
+    if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
     this.resizeObserver?.disconnect();
     this.renderer?.dispose();
-    // Remove label renderer DOM element
     this.labelRenderer?.domElement.remove();
   }
 
@@ -104,12 +91,12 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.replay = await firstValueFrom(
         this.http.get<ShowcaseReplay>(`${environment.apiUrl}/showcase-replay`)
       );
-      this.mapName = this.formatMapName(this.replay.map_name);
-      this.blueScore = this.replay.blue_score;
+      this.mapName    = this.formatMapName(this.replay.map_name);
+      this.blueScore  = this.replay.blue_score;
       this.orangeScore = this.replay.orange_score;
       this.playerNames = [...new Set(this.replay.frames[0]?.players.map(p => p.name) ?? [])];
       this.loading = false;
-      this.setupCarsFromFirstFrame();
+      this.setupCars();
       this.startAnimation();
     } catch (err) {
       console.error('Failed to load showcase replay:', err);
@@ -119,10 +106,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private formatMapName(raw: string): string {
-    return raw
-      .replace(/_P$/i, '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
+    return raw.replace(/_P$/i, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   togglePlayback(): void {
@@ -137,215 +121,267 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
   private initScene(): void {
     const container = this.canvasContainer.nativeElement;
-    const width = container.clientWidth;
+    const width  = container.clientWidth;
     const height = container.clientHeight;
 
-    // Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0e14);
-    this.scene.fog = new THREE.FogExp2(0x0a0e14, 0.0012);
+    this.scene.background = new THREE.Color(0x080c12);
+    this.scene.fog = new THREE.Fog(0x080c12, 600, 1400);
 
-    // Camera — angled 3D perspective view
-    this.camera = new THREE.PerspectiveCamera(55, width / height, 1, 3000);
-    this.camera.position.set(this.CAMERA_RADIUS, this.CAMERA_HEIGHT, 0);
-    this.camera.lookAt(0, 0, 0);
+    // Fixed angled camera — looking from one corner down at the field
+    this.camera = new THREE.PerspectiveCamera(55, width / height, 1, 2000);
+    this.camera.position.set(320, 260, 380);
+    this.camera.lookAt(0, 30, 0);
 
     // WebGL renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    // CSS2D label renderer — overlaid on top of the WebGL canvas
+    // CSS2D label renderer
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(width, height);
     this.labelRenderer.domElement.style.position = 'absolute';
-    this.labelRenderer.domElement.style.top = '0';
+    this.labelRenderer.domElement.style.top  = '0';
     this.labelRenderer.domElement.style.left = '0';
     this.labelRenderer.domElement.style.pointerEvents = 'none';
     container.appendChild(this.labelRenderer.domElement);
 
-    // Lighting
-    const ambient = new THREE.AmbientLight(0x404060, 1.5);
-    this.scene.add(ambient);
+    // Lights
+    this.scene.add(new THREE.AmbientLight(0x304060, 2.0));
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4);
     sun.position.set(300, 500, 200);
     sun.castShadow = true;
-    sun.shadow.mapSize.width = 1024;
-    sun.shadow.mapSize.height = 1024;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far  = 1500;
+    sun.shadow.camera.left = -400;
+    sun.shadow.camera.right = 400;
+    sun.shadow.camera.top   = 600;
+    sun.shadow.camera.bottom = -600;
     this.scene.add(sun);
 
-    const fillLight = new THREE.DirectionalLight(0x6699ff, 0.4);
-    fillLight.position.set(-200, 200, -200);
-    this.scene.add(fillLight);
+    this.scene.add(Object.assign(new THREE.DirectionalLight(0x4466cc, 0.5), {
+      position: new THREE.Vector3(-200, 300, -200)
+    }));
 
     this.buildField();
     this.buildBall();
   }
 
   private buildField(): void {
-    const fw = FIELD_WIDTH * SCALE;
+    const fw = FIELD_WIDTH  * SCALE;
     const fl = FIELD_LENGTH * SCALE;
     const fh = FIELD_HEIGHT * SCALE;
 
-    // Ground
-    const groundGeo = new THREE.PlaneGeometry(fw, fl);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0d3d28,
-      roughness: 0.95,
-      metalness: 0.0
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    // Green turf
+    const turf = new THREE.Mesh(
+      new THREE.PlaneGeometry(fw, fl),
+      new THREE.MeshStandardMaterial({ color: 0x0c3b22, roughness: 0.95 })
+    );
+    turf.rotation.x = -Math.PI / 2;
+    turf.receiveShadow = true;
+    this.scene.add(turf);
 
-    // Field lines — center circle, center line, box lines
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 });
+    // Field line material
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18 });
 
     // Center line
-    const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(fw, 1.5), lineMat);
-    centerLine.rotation.x = -Math.PI / 2;
-    centerLine.position.y = 0.1;
-    this.scene.add(centerLine);
+    const cl = new THREE.Mesh(new THREE.PlaneGeometry(fw, 1.5), lineMat);
+    cl.rotation.x = -Math.PI / 2;
+    cl.position.y = 0.05;
+    this.scene.add(cl);
 
-    // Center circle (ring)
-    const circleGeo = new THREE.RingGeometry(40, 42, 64);
-    const circle = new THREE.Mesh(circleGeo, lineMat);
-    circle.rotation.x = -Math.PI / 2;
-    circle.position.y = 0.1;
-    this.scene.add(circle);
+    // Center circle
+    const ring = new THREE.Mesh(new THREE.RingGeometry(38, 40, 64), lineMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.05;
+    this.scene.add(ring);
 
-    // Sideline walls (transparent)
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x223344,
-      transparent: true,
-      opacity: 0.15,
-      roughness: 0.8
+    // Walls — low opacity so you can see through them
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3, roughness: 0.9 });
+
+    // Side walls (along field length)
+    [-1, 1].forEach(s => {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(2, fh, fl + 4), wallMat);
+      w.position.set(s * (fw / 2 + 1), fh / 2, 0);
+      this.scene.add(w);
     });
 
-    // Side walls
-    [-1, 1].forEach(side => {
-      const wallGeo = new THREE.BoxGeometry(2, fh, fl);
-      const wall = new THREE.Mesh(wallGeo, wallMat);
-      wall.position.set(side * fw / 2, fh / 2, 0);
-      this.scene.add(wall);
+    // End walls (across field width)
+    [-1, 1].forEach(s => {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(fw + 4, fh, 2), wallMat);
+      w.position.set(0, fh / 2, s * (fl / 2 + 1));
+      this.scene.add(w);
     });
 
-    // End walls
+    // Ceiling (very faint)
+    const ceiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(fw, fl),
+      new THREE.MeshBasicMaterial({ color: 0x112233, transparent: true, opacity: 0.08 })
+    );
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = fh;
+    this.scene.add(ceiling);
+
+    // Goals
     [-1, 1].forEach(side => {
-      const wallGeo = new THREE.BoxGeometry(fw, fh, 2);
-      const wall = new THREE.Mesh(wallGeo, wallMat);
-      wall.position.set(0, fh / 2, side * fl / 2);
-      this.scene.add(wall);
-    });
+      const isBlue  = side === -1;
+      const color   = isBlue ? this.teamColors.blue : this.teamColors.orange;
+      const hexColor = isBlue ? '#3b82f6' : '#f97316';
 
-    // Goals — orange and blue glowing goal lines
-    [-1, 1].forEach(side => {
-      const isBlue = side === -1;
-      const color = isBlue ? this.teamColors.blue : this.teamColors.orange;
+      const goalW  = FIELD_WIDTH * 0.22 * SCALE;
+      const goalH  = 120 * SCALE;
+      const goalMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
 
-      // Goal back wall
-      const goalWidth = FIELD_WIDTH * 0.22 * SCALE;
-      const goalHeight = 120 * SCALE;
-      const goalMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 });
-      const goalBack = new THREE.Mesh(new THREE.PlaneGeometry(goalWidth, goalHeight), goalMat);
-      goalBack.position.set(0, goalHeight / 2, side * (fl / 2 + 1));
-      goalBack.rotation.y = side === -1 ? 0 : Math.PI;
-      this.scene.add(goalBack);
+      // Back panel
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(goalW, goalH), goalMat);
+      back.position.set(0, goalH / 2, side * (fl / 2));
+      this.scene.add(back);
 
-      // Goal floor line
-      const goalLine = new THREE.Mesh(
-        new THREE.PlaneGeometry(goalWidth, 2),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6 })
+      // Floor stripe
+      const stripe = new THREE.Mesh(
+        new THREE.PlaneGeometry(goalW, 2.5),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 })
       );
-      goalLine.rotation.x = -Math.PI / 2;
-      goalLine.position.set(0, 0.2, side * fl / 2);
-      this.scene.add(goalLine);
+      stripe.rotation.x = -Math.PI / 2;
+      stripe.position.set(0, 0.15, side * fl / 2);
+      this.scene.add(stripe);
 
-      // Team label at goal
-      const labelDiv = document.createElement('div');
-      labelDiv.textContent = isBlue ? 'BLUE' : 'ORANGE';
-      labelDiv.style.cssText = `
-        color: ${isBlue ? '#3b82f6' : '#f97316'};
-        font-size: 11px;
-        font-weight: 700;
-        font-family: monospace;
-        letter-spacing: 2px;
-        text-shadow: 0 0 8px ${isBlue ? '#3b82f6' : '#f97316'};
-        pointer-events: none;
+      // Team label floating above goal
+      const div = document.createElement('div');
+      div.textContent = isBlue ? 'BLUE' : 'ORANGE';
+      div.style.cssText = `
+        color:${hexColor};font-size:10px;font-weight:800;
+        font-family:monospace;letter-spacing:3px;
+        text-shadow:0 0 10px ${hexColor};pointer-events:none;
       `;
-      const label = new CSS2DObject(labelDiv);
-      label.position.set(0, goalHeight + 5, side * fl / 2);
+      const label = new CSS2DObject(div);
+      label.position.set(0, goalH + 6, side * fl / 2);
       this.scene.add(label);
     });
   }
 
   private buildBall(): void {
-    const ballGeo = new THREE.SphereGeometry(BALL_RADIUS * SCALE, 32, 32);
-    const ballMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.3,
-      metalness: 0.2,
-      emissive: 0x222222
-    });
-    this.ball = new THREE.Mesh(ballGeo, ballMat);
+    this.ball = new THREE.Mesh(
+      new THREE.SphereGeometry(BALL_RADIUS * SCALE, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.3, emissive: 0x333333 })
+    );
     this.ball.castShadow = true;
     this.scene.add(this.ball);
   }
 
-  private setupCarsFromFirstFrame(): void {
+  // Build a car group: body + roof + wheels + name label
+  private buildCar(player: { name: string; team: string; x: number; y: number; z: number }): THREE.Group {
+    const color    = this.teamColors[player.team] ?? this.teamColors.unknown;
+    const hexColor = player.team === 'blue' ? '#60a5fa' : player.team === 'orange' ? '#fb923c' : '#cccccc';
+
+    const group = new THREE.Group();
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.35,
+      metalness: 0.55,
+      emissive: color,
+      emissiveIntensity: 0.15
+    });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x88bbff,
+      transparent: true,
+      opacity: 0.55,
+      roughness: 0.1,
+      metalness: 0.1
+    });
+
+    const cw = CAR_WIDTH  * SCALE;
+    const cl = CAR_LENGTH * SCALE;
+    const ch = CAR_HEIGHT * SCALE;
+
+    // Main body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(cl, ch, cw), bodyMat);
+    body.position.y = ch / 2;
+    body.castShadow = true;
+    group.add(body);
+
+    // Roof / cockpit (narrower, sits on top of body)
+    const roofW = cw * 0.7;
+    const roofL = cl * 0.55;
+    const roofH = ch * 0.7;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofL, roofH, roofW), bodyMat);
+    roof.position.set(0, ch + roofH / 2, 0);
+    roof.castShadow = true;
+    group.add(roof);
+
+    // Windshield
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.3, roofH * 0.8, roofW * 0.98), glassMat);
+    windshield.position.set(roofL * 0.35, ch + roofH / 2, 0);
+    group.add(windshield);
+
+    // Rear window
+    const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.25, roofH * 0.7, roofW * 0.98), glassMat);
+    rearWindow.position.set(-roofL * 0.35, ch + roofH / 2, 0);
+    group.add(rearWindow);
+
+    // 4 Wheels
+    const wheelR  = ch * 0.55;
+    const wheelThk = cw * 0.18;
+    const wheelMat = darkMat;
+    const wheelGeo = new THREE.CylinderGeometry(wheelR, wheelR, wheelThk, 16);
+    const wheelPositions = [
+      [ cl * 0.35,  wheelR,  cw * 0.55],
+      [ cl * 0.35,  wheelR, -cw * 0.55],
+      [-cl * 0.35,  wheelR,  cw * 0.55],
+      [-cl * 0.35,  wheelR, -cw * 0.55],
+    ];
+    for (const [wx, wy, wz] of wheelPositions) {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wx, wy, wz);
+      wheel.castShadow = true;
+      group.add(wheel);
+    }
+
+    // Boost exhaust glow (small emissive sphere at rear)
+    const boostMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6 });
+    const boost = new THREE.Mesh(new THREE.SphereGeometry(ch * 0.3, 8, 8), boostMat);
+    boost.position.set(-cl * 0.55, ch * 0.5, 0);
+    group.add(boost);
+
+    // Player name label — attached to group so it follows the car
+    const div = document.createElement('div');
+    div.textContent = player.name;
+    div.style.cssText = `
+      color:${hexColor};
+      font-size:12px;font-weight:700;
+      font-family:'Inter',sans-serif;
+      background:rgba(0,0,0,0.6);
+      padding:2px 7px;border-radius:4px;
+      border:1px solid ${hexColor}88;
+      white-space:nowrap;pointer-events:none;
+      text-shadow:0 1px 3px rgba(0,0,0,0.9);
+    `;
+    const labelObj = new CSS2DObject(div);
+    // Float label above the roof
+    labelObj.position.set(0, ch + roofH + 8, 0);
+    group.add(labelObj);
+
+    return group;
+  }
+
+  private setupCars(): void {
     if (!this.replay || this.replay.frames.length === 0) return;
 
-    // Find first frame that has all players
     const firstFrame = this.replay.frames[0];
-    const carGeo = new THREE.BoxGeometry(
-      CAR_LENGTH * SCALE,
-      CAR_HEIGHT * SCALE,
-      CAR_WIDTH * SCALE
-    );
-
     for (const player of firstFrame.players) {
-      const color = this.teamColors[player.team] ?? this.teamColors.unknown;
-
-      // Car body
-      const mat = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.4,
-        metalness: 0.5,
-        emissive: color,
-        emissiveIntensity: 0.12
-      });
-      const mesh = new THREE.Mesh(carGeo, mat);
-      mesh.castShadow = true;
-      mesh.position.set(player.x * SCALE, player.z * SCALE, player.y * SCALE);
-      this.scene.add(mesh);
-      this.carMeshes.set(player.name, mesh);
-
-      // Player name label — floats above the car
-      const labelDiv = document.createElement('div');
-      labelDiv.textContent = player.name;
-      labelDiv.style.cssText = `
-        color: ${player.team === 'blue' ? '#60a5fa' : player.team === 'orange' ? '#fb923c' : '#ffffff'};
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        background: rgba(0,0,0,0.55);
-        padding: 2px 6px;
-        border-radius: 4px;
-        border: 1px solid ${player.team === 'blue' ? '#3b82f680' : player.team === 'orange' ? '#f9731680' : '#ffffff40'};
-        white-space: nowrap;
-        pointer-events: none;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-      `;
-      const labelObj = new CSS2DObject(labelDiv);
-      // Position label above the car (in local space — y offset above car height)
-      labelObj.position.set(0, CAR_HEIGHT * SCALE + 8, 0);
-      mesh.add(labelObj); // attach to car so it follows automatically
-      this.labelObjects.set(player.name, labelObj);
+      const group = this.buildCar(player);
+      group.position.set(player.x * SCALE, player.z * SCALE, player.y * SCALE);
+      this.scene.add(group);
+      this.carGroups.set(player.name, group);
     }
   }
 
@@ -354,21 +390,10 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const step = (timestamp: number) => {
       if (!this.isPlaying || !this.replay) return;
 
-      const elapsedMs = timestamp - this.lastTimestamp;
+      const delta = (timestamp - this.lastTimestamp) / 1000;
       this.lastTimestamp = timestamp;
-      const deltaSeconds = elapsedMs / 1000;
 
-      this.advanceFrame(deltaSeconds);
-
-      // Slowly orbit camera around the center for a dynamic 3D showcase feel
-      this.cameraAngle += this.CAMERA_ORBIT_SPEED * deltaSeconds;
-      this.camera.position.set(
-        Math.sin(this.cameraAngle) * this.CAMERA_RADIUS,
-        this.CAMERA_HEIGHT,
-        Math.cos(this.cameraAngle) * this.CAMERA_RADIUS
-      );
-      this.camera.lookAt(0, 20, 0);
-
+      this.advanceFrame(delta);
       this.renderer.render(this.scene, this.camera);
       this.labelRenderer.render(this.scene, this.camera);
 
@@ -382,9 +407,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const frames = this.replay.frames;
 
     this.elapsedPlaybackTime += deltaSeconds * this.playbackSpeed;
-
-    const startTime = frames[0]?.time ?? 0;
-    const targetTime = startTime + this.elapsedPlaybackTime;
+    const targetTime = (frames[0]?.time ?? 0) + this.elapsedPlaybackTime;
 
     while (
       this.currentFrameIndex < frames.length - 1 &&
@@ -401,21 +424,13 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const frame = frames[this.currentFrameIndex];
 
     if (frame.ball) {
-      this.ball.position.set(
-        frame.ball.x * SCALE,
-        frame.ball.z * SCALE,
-        frame.ball.y * SCALE
-      );
+      this.ball.position.set(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE);
     }
 
-    for (const player of frame.players) {
-      const mesh = this.carMeshes.get(player.name);
-      if (mesh) {
-        mesh.position.set(
-          player.x * SCALE,
-          player.z * SCALE,
-          player.y * SCALE
-        );
+    for (const p of frame.players) {
+      const group = this.carGroups.get(p.name);
+      if (group) {
+        group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
       }
     }
   }
@@ -423,12 +438,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private handleResize(): void {
     if (!this.renderer || !this.camera) return;
     const container = this.canvasContainer.nativeElement;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-
-    this.camera.aspect = width / height;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-    this.labelRenderer.setSize(width, height);
+    this.renderer.setSize(w, h);
+    this.labelRenderer.setSize(w, h);
   }
 }
