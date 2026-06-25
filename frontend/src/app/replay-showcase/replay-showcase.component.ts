@@ -148,7 +148,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
     // Fixed angled camera — looking from one corner down at the field
     this.camera = new THREE.PerspectiveCamera(55, width / height, 1, 2000);
-    this.camera.position.set(280, 420, 340);
+    this.camera.position.set(280, 320, 340);
     this.camera.lookAt(0, 0, 0);
 
     // WebGL renderer
@@ -445,14 +445,33 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
     const frame = frames[this.currentFrameIndex];
 
-    if (frame.ball) {
-      this.ball.position.set(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE);
+    const ballPos = frame.ball
+      ? new THREE.Vector3(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE)
+      : null;
+
+    if (ballPos) {
+      this.ball.position.copy(ballPos);
     }
 
     for (const p of frame.players) {
       const group = this.carGroups.get(p.name);
       if (group) {
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
+
+        // Rotate car to face the ball on the horizontal plane (yaw only).
+        // We zero out Y on both positions so the car doesn't pitch up/down
+        // toward a ball that's in the air.
+        if (ballPos) {
+          const carFlat  = new THREE.Vector3(p.x * SCALE, 0, p.y * SCALE);
+          const ballFlat = new THREE.Vector3(ballPos.x, 0, ballPos.z);
+          if (carFlat.distanceTo(ballFlat) > 1) {
+            const angle = Math.atan2(
+              ballFlat.x - carFlat.x,
+              ballFlat.z - carFlat.z
+            );
+            group.rotation.y = angle;
+          }
+        }
       }
     }
   }
