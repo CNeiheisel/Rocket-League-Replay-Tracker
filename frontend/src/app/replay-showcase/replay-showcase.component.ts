@@ -385,7 +385,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     `;
     const labelObj = new CSS2DObject(div);
     // Float label above the roof
-    labelObj.position.set(0, ch + roofH + 8, 0);
+    labelObj.position.set(0, ch + roofH + 20, 0);
     group.add(labelObj);
 
     return group;
@@ -394,7 +394,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private setupCars(): void {
     if (!this.replay || this.replay.frames.length === 0) return;
 
-    const firstFrame = this.replay.frames[0];
+    // Use first frame that has players — frame 0 may be empty if
+    // player name replication hadn't happened yet in the raw replay data
+    const firstFrame = this.replay.frames.find(f => f.players.length > 0);
+    if (!firstFrame) return;
+
     for (const player of firstFrame.players) {
       const group = this.buildCar(player);
       group.position.set(player.x * SCALE, player.z * SCALE, player.y * SCALE);
