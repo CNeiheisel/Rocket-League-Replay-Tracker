@@ -30,6 +30,7 @@ const CAR_LENGTH   = 120;
 const CAR_WIDTH    = 85;
 const CAR_HEIGHT   = 36;
 const SCALE        = 0.05;
+const CAR_SCALE    = 3.5; // Cars rendered larger than real scale so they're clearly visible
 
 @Component({
   selector: 'app-replay-showcase',
@@ -103,7 +104,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.mapName    = this.formatMapName(this.replay.map_name);
       this.blueScore  = this.replay.blue_score;
       this.orangeScore = this.replay.orange_score;
-      this.playerNames = [...new Set(this.replay.frames[0]?.players.map(p => p.name) ?? [])];
+
+      // Find first frame that actually has all players (frame 0 may be empty
+      // if player names hadn't resolved yet at the start of the replay)
+      const firstPopulatedFrame = this.replay.frames.find(f => f.players.length > 0);
+      this.playerNames = [...new Set(firstPopulatedFrame?.players.map(p => p.name) ?? [])];
       this.loading = false;
       if (this.sceneReady) {
         this.setupCars();
@@ -281,7 +286,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
   private buildBall(): void {
     this.ball = new THREE.Mesh(
-      new THREE.SphereGeometry(BALL_RADIUS * SCALE, 32, 32),
+      new THREE.SphereGeometry(BALL_RADIUS * SCALE * 2.5, 32, 32),
       new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.3, emissive: 0x333333 })
     );
     this.ball.castShadow = true;
@@ -311,9 +316,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       metalness: 0.1
     });
 
-    const cw = CAR_WIDTH  * SCALE;
-    const cl = CAR_LENGTH * SCALE;
-    const ch = CAR_HEIGHT * SCALE;
+    const cw = CAR_WIDTH  * SCALE * CAR_SCALE;
+    const cl = CAR_LENGTH * SCALE * CAR_SCALE;
+    const ch = CAR_HEIGHT * SCALE * CAR_SCALE;
 
     // Main body
     const body = new THREE.Mesh(new THREE.BoxGeometry(cl, ch, cw), bodyMat);
