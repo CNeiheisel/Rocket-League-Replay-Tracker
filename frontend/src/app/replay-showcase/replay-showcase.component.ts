@@ -479,7 +479,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
           // The car body mesh is built along X axis but Unreal forward is Y,
           // so apply a -90deg offset around Y to align the model correctly.
           const offset = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), -Math.PI / 2
+            new THREE.Vector3(0, 1, 0), Math.PI / 2
           );
           group.quaternion.copy(q.multiply(offset));
         }
