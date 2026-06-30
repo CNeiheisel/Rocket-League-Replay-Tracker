@@ -56,6 +56,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private labelRenderer!: CSS2DRenderer;
   private ball!: THREE.Mesh;
   private carGroups = new Map<string, THREE.Group>();
+  private labelObjects = new Map<string, CSS2DObject>();
   private replay: ShowcaseReplay | null = null;
   private currentFrameIndex = 0;
   private elapsedPlaybackTime = 0;
@@ -370,7 +371,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     boost.position.set(-cl * 0.55, ch * 0.5, 0);
     group.add(boost);
 
-    // Player name label — attached to group so it follows the car
+    // Player name label — added to SCENE (not car group) so it never
+    // rotates with the car during flips/wall rides. We update its world
+    // position manually each frame based on the car's world position.
     const div = document.createElement('div');
     div.textContent = player.name;
     div.style.cssText = `
@@ -384,9 +387,13 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       text-shadow:0 1px 3px rgba(0,0,0,0.9);
     `;
     const labelObj = new CSS2DObject(div);
-    // Float label above the roof
-    labelObj.position.set(0, ch + roofH + 20, 0);
-    group.add(labelObj);
+    labelObj.position.set(
+      player.x * SCALE,
+      player.z * SCALE + 18,
+      player.y * SCALE
+    );
+    this.scene.add(labelObj);
+    this.labelObjects.set(player.name, labelObj);
 
     return group;
   }
@@ -459,25 +466,28 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
 
         if (p.rx != null && p.rw != null) {
-          // rrrocket gives us Unreal Engine quaternion in (x, y, z, w) order.
-          // Unreal uses a left-handed Z-up coordinate system; Three.js is
-          // right-handed Y-up. The axis mapping we use throughout is:
-          //   Three.js X = Unreal X
-          //   Three.js Y = Unreal Z  (up)
-          //   Three.js Z = Unreal Y  (forward, negated for handedness)
-          // Applying the same swap+negate to the quaternion gives correct orientation.
-          const q = new THREE.Quaternion(p.rx ?? 0, p.rz ?? 0, -(p.ry ?? 0), p.rw ?? 1).normalize();
+          // Unreal Engine (left-handed, Z-up) → Three.js (right-handed, Y-up)
+          // Position mapping: (ux, uy, uz) → (ux, uz, uy) — already applied above
+          // Quaternion mapping must match: swap Y↔Z axes, negate X and Z to
+          // correct for the handedness flip.
+          const q = new THREE.Quaternion(
+            -(p.rx ?? 0),   // negate X for handedness
+             (p.rz ?? 0),   // Unreal Z → Three.js Y
+            -(p.ry ?? 0),   // Unreal Y → Three.js Z (negated)
+             (p.rw ?? 1)
+          ).normalize();
           group.quaternion.copy(q);
-        } else if (ballPos) {
-          // Fallback: face the ball on the horizontal plane if no rotation data
-          const carFlat  = new THREE.Vector3(p.x * SCALE, 0, p.y * SCALE);
-          const ballFlat = new THREE.Vector3(ballPos.x, 0, ballPos.z);
-          if (carFlat.distanceTo(ballFlat) > 1) {
-            group.rotation.y = Math.atan2(
-              ballFlat.x - carFlat.x,
-              ballFlat.z - carFlat.z
-            ) + Math.PI / 2;
-          }
+        }
+
+        // Update label world position — always upright, fixed height above
+        // the car's world position regardless of car rotation/flips
+        const label = this.labelObjects.get(p.name);
+        if (label) {
+          label.position.set(
+            p.x * SCALE,
+            p.z * SCALE + 18,
+            p.y * SCALE
+          );
         }
       }
     }
