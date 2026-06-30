@@ -476,16 +476,21 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
             -(p.ry ?? 0),   // Unreal Y → Three.js Z (negated)
              (p.rw ?? 1)
           ).normalize();
-          group.quaternion.copy(q);
+          // The car body mesh is built along X axis but Unreal forward is Y,
+          // so apply a -90deg offset around Y to align the model correctly.
+          const offset = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0), -Math.PI / 2
+          );
+          group.quaternion.copy(q.multiply(offset));
         }
 
-        // Update label world position — always upright, fixed height above
-        // the car's world position regardless of car rotation/flips
+        // Update label world position — always upright, well above the car
+        // regardless of car rotation/flips/wall rides
         const label = this.labelObjects.get(p.name);
         if (label) {
           label.position.set(
             p.x * SCALE,
-            p.z * SCALE + 18,
+            p.z * SCALE + 28,
             p.y * SCALE
           );
         }
