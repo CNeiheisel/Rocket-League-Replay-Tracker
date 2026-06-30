@@ -469,7 +469,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
               ballFlat.x - carFlat.x,
               ballFlat.z - carFlat.z
             );
-            group.rotation.y = angle;
+            group.rotation.y = angle + Math.PI / 2;
           }
         }
       }
