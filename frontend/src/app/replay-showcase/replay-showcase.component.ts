@@ -321,8 +321,8 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const cl = CAR_LENGTH * SCALE * CAR_SCALE;
     const ch = CAR_HEIGHT * SCALE * CAR_SCALE;
 
-    // Main body — built along Z axis (forward) to match Unreal Y→Three.js Z mapping
-    const body = new THREE.Mesh(new THREE.BoxGeometry(cw, ch, cl), bodyMat);
+    // Main body — length along X since Unreal identity forward is +X in Three.js
+    const body = new THREE.Mesh(new THREE.BoxGeometry(cl, ch, cw), bodyMat);
     body.position.y = ch / 2;
     body.castShadow = true;
     group.add(body);
@@ -331,31 +331,31 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const roofW = cw * 0.7;
     const roofL = cl * 0.55;
     const roofH = ch * 0.7;
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofW, roofH, roofL), bodyMat);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofL, roofH, roofW), bodyMat);
     roof.position.set(0, ch + roofH / 2, 0);
     roof.castShadow = true;
     group.add(roof);
 
-    // Windshield — front of car is +Z
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(roofW * 0.98, roofH * 0.8, roofL * 0.3), glassMat);
-    windshield.position.set(0, ch + roofH / 2, roofL * 0.35);
+    // Windshield — front of car is +X
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.3, roofH * 0.8, roofW * 0.98), glassMat);
+    windshield.position.set(roofL * 0.35, ch + roofH / 2, 0);
     group.add(windshield);
 
     // Rear window
-    const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofW * 0.98, roofH * 0.7, roofL * 0.25), glassMat);
-    rearWindow.position.set(0, ch + roofH / 2, -roofL * 0.35);
+    const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.25, roofH * 0.7, roofW * 0.98), glassMat);
+    rearWindow.position.set(-roofL * 0.35, ch + roofH / 2, 0);
     group.add(rearWindow);
 
-    // 4 Wheels — along Z for front/rear, X for left/right
+    // 4 Wheels — X for front/rear, Z for left/right
     const wheelR   = ch * 0.55;
     const wheelThk = cw * 0.18;
     const wheelMat = darkMat;
     const wheelGeo = new THREE.CylinderGeometry(wheelR, wheelR, wheelThk, 16);
     const wheelPositions = [
-      [ cw * 0.55, wheelR,  cl * 0.35],
-      [-cw * 0.55, wheelR,  cl * 0.35],
-      [ cw * 0.55, wheelR, -cl * 0.35],
-      [-cw * 0.55, wheelR, -cl * 0.35],
+      [ cl * 0.35, wheelR,  cw * 0.55],
+      [ cl * 0.35, wheelR, -cw * 0.55],
+      [-cl * 0.35, wheelR,  cw * 0.55],
+      [-cl * 0.35, wheelR, -cw * 0.55],
     ];
     for (const [wx, wy, wz] of wheelPositions) {
       const wheel = new THREE.Mesh(wheelGeo, wheelMat);
@@ -368,7 +368,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     // Boost exhaust glow (small emissive sphere at rear)
     const boostMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6 });
     const boost = new THREE.Mesh(new THREE.SphereGeometry(ch * 0.3, 8, 8), boostMat);
-    boost.position.set(0, ch * 0.5, -cl * 0.55);
+    boost.position.set(-cl * 0.55, ch * 0.5, 0);
     group.add(boost);
 
     // Player name label — added to SCENE (not car group) so it never
@@ -466,15 +466,16 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
 
         if (p.rx != null && p.rw != null) {
-          // Verified against actual kickoff quaternion data:
-          // Unreal Z-up left-handed → Three.js Y-up right-handed
-          // prstn  (0,-4608) rz=0.7071  rw=0.7071 → should face +Z ✓
-          // opp_bomb (0,4608) rz=-0.7071 rw=0.7071 → should face -Z ✓
-          // Morveu  diagonal  rz=-0.3827 rw=0.9239 → should face +45° ✓
+          // Verified with actual kickoff values:
+          // prstn (0,-4608) rz=0.7071 rw=0.7071 must face +Z in Three.js
+          // → needs Three.js quaternion (0, 0.7071, 0, 0.7071) = +90° around Y
+          // → so Unreal rz maps directly to Three.js Y component, no negation.
+          // rx/ry (pitch/roll) are near-zero on flat ground; for aerials/wall
+          // rides they map: Unreal rx → Three.js X, Unreal ry → Three.js -Z
           const q = new THREE.Quaternion(
-             (p.ry ?? 0),   // Unreal pitch Y → Three.js X
-            -(p.rz ?? 0),   // Unreal yaw Z  → Three.js Y (negated for handedness)
-            -(p.rx ?? 0),   // Unreal roll X → Three.js Z (negated)
+             (p.rx ?? 0),   // pitch
+             (p.rz ?? 0),   // yaw: Unreal Z → Three.js Y (same sign)
+            -(p.ry ?? 0),   // roll: Unreal Y → Three.js -Z
              (p.rw ?? 1)
           ).normalize();
           group.quaternion.copy(q);
