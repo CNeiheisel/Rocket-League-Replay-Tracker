@@ -466,20 +466,18 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
 
         if (p.rx != null && p.rw != null) {
-          // Unreal Engine (left-handed, Z-up) → Three.js (right-handed, Y-up)
+          // Verified against actual kickoff quaternion data:
+          // Unreal Z-up left-handed → Three.js Y-up right-handed
+          // prstn  (0,-4608) rz=0.7071  rw=0.7071 → should face +Z ✓
+          // opp_bomb (0,4608) rz=-0.7071 rw=0.7071 → should face -Z ✓
+          // Morveu  diagonal  rz=-0.3827 rw=0.9239 → should face +45° ✓
           const q = new THREE.Quaternion(
-            -(p.rx ?? 0),
-             (p.rz ?? 0),
-            -(p.ry ?? 0),
+             (p.ry ?? 0),   // Unreal pitch Y → Three.js X
+            -(p.rz ?? 0),   // Unreal yaw Z  → Three.js Y (negated for handedness)
+            -(p.rx ?? 0),   // Unreal roll X → Three.js Z (negated)
              (p.rw ?? 1)
           ).normalize();
-          // Premultiply a PI/2 base rotation so the car nose (Z) points
-          // forward instead of sideways — baked in here so it persists
-          // every frame without being overwritten.
-          const base = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), Math.PI / 2
-          );
-          group.quaternion.copy(base.premultiply(q));
+          group.quaternion.copy(q);
         }
 
         // Update label world position — always upright, well above the car
