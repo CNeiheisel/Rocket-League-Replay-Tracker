@@ -466,19 +466,19 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
 
         if (p.rx != null && p.rw != null) {
-          // Verified with actual kickoff values:
-          // prstn (0,-4608) rz=0.7071 rw=0.7071 must face +Z in Three.js
-          // → needs Three.js quaternion (0, 0.7071, 0, 0.7071) = +90° around Y
-          // → so Unreal rz maps directly to Three.js Y component, no negation.
-          // rx/ry (pitch/roll) are near-zero on flat ground; for aerials/wall
-          // rides they map: Unreal rx → Three.js X, Unreal ry → Three.js -Z
           const q = new THREE.Quaternion(
-             (p.rx ?? 0),   // pitch
-             (p.rz ?? 0),   // yaw: Unreal Z → Three.js Y (same sign)
-            -(p.ry ?? 0),   // roll: Unreal Y → Three.js -Z
+             (p.rx ?? 0),
+             (p.rz ?? 0),
+            -(p.ry ?? 0),
              (p.rw ?? 1)
           ).normalize();
-          group.quaternion.copy(q);
+          // Post-multiply by 90° around Y to align car mesh forward (+X)
+          // with Unreal forward (+Y → Three.js +Z after coordinate swap).
+          // This fixes straight kickoff cars without affecting diagonal ones.
+          const offset = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0), -Math.PI / 2
+          );
+          group.quaternion.copy(q.multiply(offset));
         }
 
         // Update label world position — always upright, well above the car
