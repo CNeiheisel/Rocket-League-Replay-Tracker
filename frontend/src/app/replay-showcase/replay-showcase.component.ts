@@ -321,41 +321,41 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const cl = CAR_LENGTH * SCALE * CAR_SCALE;
     const ch = CAR_HEIGHT * SCALE * CAR_SCALE;
 
-    // Main body
-    const body = new THREE.Mesh(new THREE.BoxGeometry(cl, ch, cw), bodyMat);
+    // Main body — built along Z axis (forward) to match Unreal Y→Three.js Z mapping
+    const body = new THREE.Mesh(new THREE.BoxGeometry(cw, ch, cl), bodyMat);
     body.position.y = ch / 2;
     body.castShadow = true;
     group.add(body);
 
-    // Roof / cockpit (narrower, sits on top of body)
+    // Roof / cockpit
     const roofW = cw * 0.7;
     const roofL = cl * 0.55;
     const roofH = ch * 0.7;
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofL, roofH, roofW), bodyMat);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofW, roofH, roofL), bodyMat);
     roof.position.set(0, ch + roofH / 2, 0);
     roof.castShadow = true;
     group.add(roof);
 
-    // Windshield
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.3, roofH * 0.8, roofW * 0.98), glassMat);
-    windshield.position.set(roofL * 0.35, ch + roofH / 2, 0);
+    // Windshield — front of car is +Z
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(roofW * 0.98, roofH * 0.8, roofL * 0.3), glassMat);
+    windshield.position.set(0, ch + roofH / 2, roofL * 0.35);
     group.add(windshield);
 
     // Rear window
-    const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.25, roofH * 0.7, roofW * 0.98), glassMat);
-    rearWindow.position.set(-roofL * 0.35, ch + roofH / 2, 0);
+    const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofW * 0.98, roofH * 0.7, roofL * 0.25), glassMat);
+    rearWindow.position.set(0, ch + roofH / 2, -roofL * 0.35);
     group.add(rearWindow);
 
-    // 4 Wheels
-    const wheelR  = ch * 0.55;
+    // 4 Wheels — along Z for front/rear, X for left/right
+    const wheelR   = ch * 0.55;
     const wheelThk = cw * 0.18;
     const wheelMat = darkMat;
     const wheelGeo = new THREE.CylinderGeometry(wheelR, wheelR, wheelThk, 16);
     const wheelPositions = [
-      [ cl * 0.35,  wheelR,  cw * 0.55],
-      [ cl * 0.35,  wheelR, -cw * 0.55],
-      [-cl * 0.35,  wheelR,  cw * 0.55],
-      [-cl * 0.35,  wheelR, -cw * 0.55],
+      [ cw * 0.55, wheelR,  cl * 0.35],
+      [-cw * 0.55, wheelR,  cl * 0.35],
+      [ cw * 0.55, wheelR, -cl * 0.35],
+      [-cw * 0.55, wheelR, -cl * 0.35],
     ];
     for (const [wx, wy, wz] of wheelPositions) {
       const wheel = new THREE.Mesh(wheelGeo, wheelMat);
@@ -368,7 +368,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     // Boost exhaust glow (small emissive sphere at rear)
     const boostMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6 });
     const boost = new THREE.Mesh(new THREE.SphereGeometry(ch * 0.3, 8, 8), boostMat);
-    boost.position.set(-cl * 0.55, ch * 0.5, 0);
+    boost.position.set(0, ch * 0.5, -cl * 0.55);
     group.add(boost);
 
     // Player name label — added to SCENE (not car group) so it never
@@ -471,17 +471,12 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
           // Quaternion mapping must match: swap Y↔Z axes, negate X and Z to
           // correct for the handedness flip.
           const q = new THREE.Quaternion(
-            -(p.rx ?? 0),   // negate X for handedness
-             (p.rz ?? 0),   // Unreal Z → Three.js Y
-            -(p.ry ?? 0),   // Unreal Y → Three.js Z (negated)
+            -(p.rx ?? 0),
+             (p.rz ?? 0),
+            -(p.ry ?? 0),
              (p.rw ?? 1)
           ).normalize();
-          // The car body mesh is built along X axis but Unreal forward is Y,
-          // so apply a -90deg offset around Y to align the model correctly.
-          const offset = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), Math.PI / 2
-          );
-          group.quaternion.copy(q.multiply(offset));
+          group.quaternion.copy(q);
         }
 
         // Update label world position — always upright, well above the car
