@@ -480,10 +480,10 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
           //   Unreal Y (roll)  → Three.js Z  (negated for handedness flip)
           //   Unreal Z (yaw)   → Three.js Y  (up axis swap)
           const q = new THREE.Quaternion(
-            p.rx ?? 0,    // pitch: Unreal X → Three.js X
-          -(p.rz ?? 0),   // yaw:   Unreal Z → Three.js Y (negated)
-          -(p.ry ?? 0),   // roll:  Unreal Y → Three.js -Z
-            p.rw ?? 1
+            -(p.rx ?? 0),   // pitch: negate to fix flip direction
+            -(p.rz ?? 0),   // yaw:   Unreal Z → Three.js Y (negated)
+            -(p.ry ?? 0),   // roll:  Unreal Y → Three.js -Z
+              p.rw ?? 1
           ).normalize();
           group.quaternion.copy(q);
         }
