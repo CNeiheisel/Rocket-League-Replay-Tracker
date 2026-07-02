@@ -341,7 +341,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     windshield.position.set(roofL * 0.35, ch + roofH / 2, 0);
     group.add(windshield);
 
-    // Rear window
+    // Rear window — rear is -X
     const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(roofL * 0.25, roofH * 0.7, roofW * 0.98), glassMat);
     rearWindow.position.set(-roofL * 0.35, ch + roofH / 2, 0);
     group.add(rearWindow);
@@ -466,19 +466,26 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
         group.position.set(p.x * SCALE, p.z * SCALE, p.y * SCALE);
 
         if (p.rx != null && p.rw != null) {
+          // Full quaternion rotation for correct orientation at all times
+          // (kickoff, driving, aerials, wall rides, flips).
+          //
+          // Verified against kickoff data:
+          // prstn (0,-4608) rz=0.7071 rw=0.7071 → Three.js (0, 0.7071, 0, 0.7071)
+          // = +90° around Y → rotates car +X forward to face +Z ✅
+          // opp_bomb (0,4608) rz=-0.7071 rw=0.7071 → (0,-0.7071,0,0.7071)
+          // = -90° around Y → car faces -Z ✅
+          //
+          // Axis mapping Unreal(left-hand Z-up) → Three.js(right-hand Y-up):
+          //   Unreal X (pitch) → Three.js X  (same)
+          //   Unreal Y (roll)  → Three.js Z  (negated for handedness flip)
+          //   Unreal Z (yaw)   → Three.js Y  (up axis swap)
           const q = new THREE.Quaternion(
-             (p.rx ?? 0),
-             (p.rz ?? 0),
-            -(p.ry ?? 0),
-             (p.rw ?? 1)
+            p.rx ?? 0,    // pitch: Unreal X → Three.js X
+          -(p.rz ?? 0),   // yaw:   Unreal Z → Three.js Y (negated)
+          -(p.ry ?? 0),   // roll:  Unreal Y → Three.js -Z
+            p.rw ?? 1
           ).normalize();
-          // Post-multiply by 90° around Y to align car mesh forward (+X)
-          // with Unreal forward (+Y → Three.js +Z after coordinate swap).
-          // This fixes straight kickoff cars without affecting diagonal ones.
-          const offset = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), -Math.PI / 2
-          );
-          group.quaternion.copy(q.multiply(offset));
+          group.quaternion.copy(q);
         }
 
         // Update label world position — always upright, well above the car
