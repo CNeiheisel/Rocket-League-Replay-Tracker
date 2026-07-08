@@ -3,7 +3,7 @@
     <div>
       <h2 class="showcase-title">Las Vegas Power Esports Conference Championship</h2>
       <p class="showcase-subtitle" *ngIf="!loading && !error">
-        Boise State vs Michigan State · <span class="score-blue">{{ blueScore }}</span> – <span class="score-orange">{{ orangeScore }}</span>
+        Michigan State vs. Boise State · {{ mapName }}
       </p>
     </div>
     <button
@@ -18,6 +18,23 @@
 
   <div class="canvas-wrap">
     <div #canvasContainer class="canvas-container"></div>
+
+    <!-- Scoreboard overlay — sits on top of the 3D canvas -->
+    <div class="scoreboard-overlay" *ngIf="!loading && !error">
+      <div class="scoreboard">
+        <div class="team-block team-blue">
+          <span class="team-name">Michigan State</span>
+          <span class="team-score">{{ blueScore }}</span>
+        </div>
+        <div class="clock-block">
+          <span class="clock">{{ currentTime }}</span>
+        </div>
+        <div class="team-block team-orange">
+          <span class="team-score">{{ orangeScore }}</span>
+          <span class="team-name">Boise State</span>
+        </div>
+      </div>
+    </div>
 
     <div class="overlay-state" *ngIf="loading">
       <p>Loading replay preview...</p>

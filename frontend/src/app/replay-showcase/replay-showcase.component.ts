@@ -49,6 +49,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   orangeScore = 0;
   playerNames: string[] = [];
   isPlaying = true;
+  currentTime = '5:00'; // updated each frame from replay data
 
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
@@ -247,40 +248,91 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     ceiling.position.y = fh;
     this.scene.add(ceiling);
 
-    // Goals
+    // Goals — real RL dimensions: 1786 wide x 642 tall x 880 deep
+    const GOAL_W = 1786 * SCALE;
+    const GOAL_H = 642  * SCALE;
+    const GOAL_D = 880  * SCALE;
+
     [-1, 1].forEach(side => {
-      const isBlue  = side === -1;
-      const color   = isBlue ? this.teamColors.blue : this.teamColors.orange;
+      const isBlue   = side === -1;
+      const color    = isBlue ? this.teamColors.blue : this.teamColors.orange;
       const hexColor = isBlue ? '#3b82f6' : '#f97316';
 
-      const goalW  = FIELD_WIDTH * 0.22 * SCALE;
-      const goalH  = 120 * SCALE;
-      const goalMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.22, side: THREE.DoubleSide
+      });
+      const lineMat2 = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 });
 
-      // Back panel
-      const back = new THREE.Mesh(new THREE.PlaneGeometry(goalW, goalH), goalMat);
-      back.position.set(0, goalH / 2, side * (fl / 2));
+      // The goal sits just outside the end wall.
+      // side = -1 → blue goal at -Z end; side = +1 → orange goal at +Z end
+      const gz = side * (fl / 2 + GOAL_D / 2); // center Z of goal box
+
+      // Back wall
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_W, GOAL_H), mat);
+      back.position.set(0, GOAL_H / 2, side * (fl / 2 + GOAL_D));
       this.scene.add(back);
 
-      // Floor stripe
-      const stripe = new THREE.Mesh(
-        new THREE.PlaneGeometry(goalW, 2.5),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 })
-      );
-      stripe.rotation.x = -Math.PI / 2;
-      stripe.position.set(0, 0.15, side * fl / 2);
-      this.scene.add(stripe);
+      // Left wall
+      const leftW = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_D, GOAL_H), mat);
+      leftW.rotation.y = Math.PI / 2;
+      leftW.position.set(-GOAL_W / 2, GOAL_H / 2, gz);
+      this.scene.add(leftW);
 
-      // Team label floating above goal
+      // Right wall
+      const rightW = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_D, GOAL_H), mat);
+      rightW.rotation.y = -Math.PI / 2;
+      rightW.position.set( GOAL_W / 2, GOAL_H / 2, gz);
+      this.scene.add(rightW);
+
+      // Roof
+      const roofG = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_W, GOAL_D), mat);
+      roofG.rotation.x = Math.PI / 2;
+      roofG.position.set(0, GOAL_H, gz);
+      this.scene.add(roofG);
+
+      // Floor inside net
+      const floorG = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_W, GOAL_D), mat);
+      floorG.rotation.x = -Math.PI / 2;
+      floorG.position.set(0, 0.1, gz);
+      this.scene.add(floorG);
+
+      // Goal mouth outline (the opening facing the field) — bright edge lines
+      const mouthPoints = [
+        new THREE.Vector3(-GOAL_W / 2, 0,       side * fl / 2),
+        new THREE.Vector3( GOAL_W / 2, 0,       side * fl / 2),
+        new THREE.Vector3( GOAL_W / 2, GOAL_H,  side * fl / 2),
+        new THREE.Vector3(-GOAL_W / 2, GOAL_H,  side * fl / 2),
+        new THREE.Vector3(-GOAL_W / 2, 0,       side * fl / 2),
+      ];
+      const mouthGeo = new THREE.BufferGeometry().setFromPoints(mouthPoints);
+      this.scene.add(new THREE.Line(mouthGeo, lineMat2));
+
+      // Crossbar (top edge of mouth)
+      const crossbarGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-GOAL_W / 2, GOAL_H, side * fl / 2),
+        new THREE.Vector3( GOAL_W / 2, GOAL_H, side * fl / 2),
+      ]);
+      this.scene.add(new THREE.Line(crossbarGeo, lineMat2));
+
+      // Goal line on turf (glowing stripe at mouth)
+      const goalLine = new THREE.Mesh(
+        new THREE.PlaneGeometry(GOAL_W, 2),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 })
+      );
+      goalLine.rotation.x = -Math.PI / 2;
+      goalLine.position.set(0, 0.2, side * fl / 2);
+      this.scene.add(goalLine);
+
+      // Team label above goal
       const div = document.createElement('div');
-      div.textContent = isBlue ? 'BLUE' : 'ORANGE';
+      div.textContent = isBlue ? '🔵 BLUE' : '🟠 ORANGE';
       div.style.cssText = `
-        color:${hexColor};font-size:10px;font-weight:800;
-        font-family:monospace;letter-spacing:3px;
+        color:${hexColor};font-size:11px;font-weight:800;
+        font-family:monospace;letter-spacing:2px;
         text-shadow:0 0 10px ${hexColor};pointer-events:none;
       `;
       const label = new CSS2DObject(div);
-      label.position.set(0, goalH + 6, side * fl / 2);
+      label.position.set(0, GOAL_H + 8, side * (fl / 2 + GOAL_D / 2));
       this.scene.add(label);
     });
   }
@@ -451,6 +503,16 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     const frame = frames[this.currentFrameIndex];
+
+    // Update match clock — RL games are 300s counting down.
+    // The replay starts partway through so we calculate remaining time
+    // from the replay's total duration and current position.
+    const replayDuration = (frames[frames.length - 1]?.time ?? 300) - (frames[0]?.time ?? 0);
+    const elapsed = frame.time - (frames[0]?.time ?? 0);
+    const remaining = Math.max(0, replayDuration - elapsed);
+    const mins = Math.floor(remaining / 60);
+    const secs = Math.floor(remaining % 60);
+    this.currentTime = `${mins}:${secs.toString().padStart(2, '0')}`;
 
     const ballPos = frame.ball
       ? new THREE.Vector3(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE)
