@@ -48,12 +48,13 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   mapName = '';
   blueScore = 0;
   orangeScore = 0;
-  playerNames: string[] = [];
+  bluePlayers: string[] = [];
+  orangePlayers: string[] = [];
   isPlaying = true;
   currentTime = '5:00';
   private finalBlueScore = 0;
   private finalOrangeScore = 0;
-  private wallClockElapsed = 0; // total real seconds elapsed during playback
+  private wallClockElapsed = 0;
 
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
@@ -62,6 +63,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private ball!: THREE.Mesh;
   private carGroups = new Map<string, THREE.Group>();
   private labelObjects = new Map<string, CSS2DObject>();
+  private boostTrails = new Map<string, THREE.Points>();
+  private boostTrailPositions = new Map<string, { positions: Float32Array; index: number }>();
+  private readonly TRAIL_LENGTH = 20;
   private replay: ShowcaseReplay | null = null;
   private currentFrameIndex = 0;
   private elapsedPlaybackTime = 0;
@@ -115,7 +119,9 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.finalOrangeScore = this.replay.orange_score;
 
       const firstPopulatedFrame = this.replay.frames.find(f => f.players.length > 0);
-      this.playerNames = [...new Set(firstPopulatedFrame?.players.map(p => p.name) ?? [])];
+      const allPlayers = firstPopulatedFrame?.players ?? [];
+      this.bluePlayers   = allPlayers.filter(p => p.team === 'blue').map(p => p.name);
+      this.orangePlayers = allPlayers.filter(p => p.team === 'orange').map(p => p.name);
       this.loading = false;
       if (this.sceneReady) {
         this.setupCars();
@@ -458,8 +464,6 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private setupCars(): void {
     if (!this.replay || this.replay.frames.length === 0) return;
 
-    // Use first frame that has players — frame 0 may be empty if
-    // player name replication hadn't happened yet in the raw replay data
     const firstFrame = this.replay.frames.find(f => f.players.length > 0);
     if (!firstFrame) return;
 
@@ -468,6 +472,33 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       group.position.set(player.x * SCALE, player.z * SCALE, player.y * SCALE);
       this.scene.add(group);
       this.carGroups.set(player.name, group);
+
+      // Boost trail — a particle system that records recent car positions
+      const color = this.teamColors[player.team] ?? this.teamColors.unknown;
+      const trailPositions = new Float32Array(this.TRAIL_LENGTH * 3);
+      const trailGeo = new THREE.BufferGeometry();
+      trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+
+      const sizes = new Float32Array(this.TRAIL_LENGTH);
+      for (let i = 0; i < this.TRAIL_LENGTH; i++) sizes[i] = 3 * (1 - i / this.TRAIL_LENGTH);
+      trailGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+      const trailMat = new THREE.PointsMaterial({
+        color,
+        size: 2.5,
+        transparent: true,
+        opacity: 0.6,
+        sizeAttenuation: true,
+        depthWrite: false
+      });
+      const trail = new THREE.Points(trailGeo, trailMat);
+      trail.visible = false; // hidden until car starts moving
+      this.scene.add(trail);
+      this.boostTrails.set(player.name, trail);
+      this.boostTrailPositions.set(player.name, {
+        positions: trailPositions,
+        index: 0
+      });
     }
   }
 
@@ -514,11 +545,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
     const frame = frames[this.currentFrameIndex];
 
-    // Clock: use wall-clock elapsed time so it keeps ticking even between
-    // goals when no RigidBody updates are happening and frame index stalls.
-    // Count down from replay duration.
-    const replayDuration = (frames[frames.length - 1]?.time ?? 300) - (frames[0]?.time ?? 0);
-    const remaining = Math.max(0, replayDuration - this.wallClockElapsed);
+    // Clock: RL games are 5 minutes (300s). The replay may include pre-game
+    // and post-game time making it longer than 300s. We cap the countdown
+    // at 300s and use wall-clock elapsed so it ticks between goals too.
+    const GAME_DURATION = 300;
+    const remaining = Math.max(0, GAME_DURATION - this.wallClockElapsed);
     const mins = Math.floor(remaining / 60);
     const secs = Math.floor(remaining % 60);
     this.currentTime = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -575,15 +606,40 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
           group.quaternion.copy(q);
         }
 
-        // Update label world position — always upright, well above the car
-        // regardless of car rotation/flips/wall rides
+        // Update label world position
         const label = this.labelObjects.get(p.name);
         if (label) {
-          label.position.set(
-            p.x * SCALE,
-            p.z * SCALE + 28,
-            p.y * SCALE
-          );
+          label.position.set(p.x * SCALE, p.z * SCALE + 28, p.y * SCALE);
+        }
+
+        // Update boost trail — record car position each frame, show trail
+        // only when car is moving fast (boosting) by checking speed via
+        // distance from previous position. Trail fades older positions.
+        const trail = this.boostTrails.get(p.name);
+        const trailData = this.boostTrailPositions.get(p.name);
+        if (trail && trailData) {
+          const px = p.x * SCALE;
+          const py = p.z * SCALE;
+          const pz = p.y * SCALE;
+
+          // Check speed: distance moved since last recorded trail point
+          const lastIdx = ((trailData.index - 1 + this.TRAIL_LENGTH) % this.TRAIL_LENGTH) * 3;
+          const dx = px - trailData.positions[lastIdx];
+          const dz = pz - trailData.positions[lastIdx + 2];
+          const speed = Math.sqrt(dx * dx + dz * dz);
+
+          // Only show trail when moving fast enough (boosting threshold)
+          if (speed > 0.8) {
+            trail.visible = true;
+            const i = trailData.index * 3;
+            trailData.positions[i]     = px;
+            trailData.positions[i + 1] = py;
+            trailData.positions[i + 2] = pz;
+            trailData.index = (trailData.index + 1) % this.TRAIL_LENGTH;
+            (trail.geometry.attributes['position'] as THREE.BufferAttribute).needsUpdate = true;
+          } else {
+            trail.visible = false;
+          }
         }
       }
     }

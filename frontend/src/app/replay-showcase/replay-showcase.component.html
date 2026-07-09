@@ -19,7 +19,7 @@
   <div class="canvas-wrap">
     <div #canvasContainer class="canvas-container"></div>
 
-    <!-- Scoreboard overlay — sits on top of the 3D canvas -->
+    <!-- Scoreboard overlay -->
     <div class="scoreboard-overlay" *ngIf="!loading && !error">
       <div class="scoreboard">
         <div class="team-block team-blue">
@@ -45,7 +45,20 @@
     </div>
   </div>
 
-  <div class="player-tags" *ngIf="!loading && !error">
-    <span *ngFor="let name of playerNames" class="player-tag">{{ name }}</span>
+  <!-- Team player tags — orange on left, blue on right -->
+  <div class="teams-row" *ngIf="!loading && !error">
+    <div class="team-side team-side-orange">
+      <span class="team-side-label" style="color:#fb923c">Michigan State</span>
+      <div class="team-pills">
+        <span class="player-tag player-tag-orange" *ngFor="let name of orangePlayers">{{ name }}</span>
+      </div>
+    </div>
+    <div class="team-divider"></div>
+    <div class="team-side team-side-blue">
+      <span class="team-side-label" style="color:#60a5fa">Boise State</span>
+      <div class="team-pills">
+        <span class="player-tag player-tag-blue" *ngFor="let name of bluePlayers">{{ name }}</span>
+      </div>
+    </div>
   </div>
 </section>
