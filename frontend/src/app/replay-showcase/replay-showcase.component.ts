@@ -548,8 +548,32 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
 
     const frame = frames[this.currentFrameIndex];
 
-    // Detect kickoff: check if any car has moved more than 50 units from
-    // its starting position — once true, never resets until loop-around
+    // Score: count goals whose timestamp has passed
+    let currentBlue = 0;
+    let currentOrange = 0;
+    if (this.replay.goals?.length) {
+      for (const goal of this.replay.goals) {
+        if (goal.time <= frame.time) {
+          if (goal.team === 'blue') currentBlue++;
+          else currentOrange++;
+        }
+      }
+    }
+
+    // If a new goal was just scored, pause the clock until next kickoff
+    const totalGoalsBefore = this.blueScore + this.orangeScore;
+    const totalGoalsNow    = currentBlue + currentOrange;
+    if (totalGoalsNow > totalGoalsBefore) {
+      this.kickoffStarted = false;
+    }
+
+    this.blueScore   = currentBlue;
+    this.orangeScore = currentOrange;
+
+    // Detect kickoff movement — also works for post-goal kickoffs since
+    // kickoffStarted was reset above when the goal was scored.
+    // Use ball movement rather than car movement since cars sometimes
+    // drift slightly before the actual kickoff countdown ends.
     if (!this.kickoffStarted && frame.players.length > 0) {
       for (const p of frame.players) {
         const init = this.initialCarPositions.get(p.name);
@@ -558,6 +582,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
           const dy = p.y - init.y;
           if (Math.sqrt(dx * dx + dy * dy) > 50) {
             this.kickoffStarted = true;
+            // Update initial positions to current so post-goal kickoff
+            // detection works relative to the new kickoff spawn point
+            for (const fp of frame.players) {
+              this.initialCarPositions.set(fp.name, { x: fp.x, y: fp.y, z: fp.z });
+            }
             break;
           }
         }
@@ -577,22 +606,6 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const mins = Math.floor(remaining / 60);
     const secs = Math.floor(remaining % 60);
     this.currentTime = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-    // Score: count goals whose timestamp has passed in the current replay time.
-    // Uses actual goal frame times from the replay header — accurate to the frame.
-    if (this.replay.goals?.length) {
-      const currentReplayTime = frame.time;
-      let blue = 0;
-      let orange = 0;
-      for (const goal of this.replay.goals) {
-        if (goal.time <= currentReplayTime) {
-          if (goal.team === 'blue') blue++;
-          else orange++;
-        }
-      }
-      this.blueScore   = blue;
-      this.orangeScore = orange;
-    }
 
     const ballPos = frame.ball
       ? new THREE.Vector3(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE)
