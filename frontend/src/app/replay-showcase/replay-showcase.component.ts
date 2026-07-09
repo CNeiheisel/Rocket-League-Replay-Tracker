@@ -351,9 +351,67 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private buildBall(): void {
+    // Build a canvas texture mimicking the Rocket League ball's
+    // black hexagon panel pattern on a white background
+    const texSize = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width  = texSize;
+    canvas.height = texSize;
+    const ctx = canvas.getContext('2d')!;
+
+    // White base
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, texSize, texSize);
+
+    // Dark hex patches
+    ctx.fillStyle = '#111122';
+    ctx.strokeStyle = '#222244';
+    ctx.lineWidth = 4;
+
+    const patches: [number, number, number][] = [
+      [0.15, 0.15, 0.12], [0.5,  0.08, 0.11], [0.85, 0.15, 0.12],
+      [0.08, 0.5,  0.11], [0.35, 0.35, 0.13], [0.65, 0.35, 0.13],
+      [0.92, 0.5,  0.11], [0.5,  0.5,  0.14], [0.2,  0.7,  0.12],
+      [0.5,  0.78, 0.11], [0.8,  0.7,  0.12], [0.15, 0.92, 0.10],
+      [0.85, 0.92, 0.10], [0.5,  0.95, 0.10],
+    ];
+
+    for (const [cx, cy, r] of patches) {
+      const x = cx * texSize;
+      const y = cy * texSize;
+      const rad = r * texSize;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 6;
+        const px = x + rad * Math.cos(angle);
+        const py = y + rad * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Subtle highlight gradient
+    const grad = ctx.createRadialGradient(
+      texSize * 0.35, texSize * 0.3, texSize * 0.05,
+      texSize * 0.5,  texSize * 0.5, texSize * 0.5
+    );
+    grad.addColorStop(0,   'rgba(220,235,255,0.5)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    grad.addColorStop(1,   'rgba(80,80,120,0.25)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, texSize, texSize);
+
+    const ballTexture = new THREE.CanvasTexture(canvas);
+
     this.ball = new THREE.Mesh(
-      new THREE.SphereGeometry(BALL_RADIUS * SCALE * 2.5, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.3, emissive: 0x333333 })
+      new THREE.SphereGeometry(BALL_RADIUS * SCALE * 2.5, 48, 48),
+      new THREE.MeshStandardMaterial({
+        map: ballTexture,
+        roughness: 0.3,
+        metalness: 0.1,
+      })
     );
     this.ball.castShadow = true;
     this.scene.add(this.ball);
@@ -612,6 +670,11 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       : null;
 
     if (ballPos) {
+      // Rotate ball based on movement for realism
+      if (this.ball.position.distanceTo(ballPos) > 0.01) {
+        this.ball.rotation.x += 0.05;
+        this.ball.rotation.z += 0.03;
+      }
       this.ball.position.copy(ballPos);
     }
 
