@@ -55,6 +55,8 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   private finalBlueScore = 0;
   private finalOrangeScore = 0;
   private wallClockElapsed = 0;
+  private kickoffStarted = false;
+  private initialCarPositions = new Map<string, { x: number; y: number; z: number }>();
 
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
@@ -472,6 +474,8 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       group.position.set(player.x * SCALE, player.z * SCALE, player.y * SCALE);
       this.scene.add(group);
       this.carGroups.set(player.name, group);
+      // Store initial position to detect when kickoff movement begins
+      this.initialCarPositions.set(player.name, { x: player.x, y: player.y, z: player.z });
 
       // Boost trail — a particle system that records recent car positions
       const color = this.teamColors[player.team] ?? this.teamColors.unknown;
@@ -524,7 +528,6 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const frames = this.replay.frames;
 
     this.elapsedPlaybackTime += deltaSeconds * this.playbackSpeed;
-    this.wallClockElapsed   += deltaSeconds * this.playbackSpeed;
     const targetTime = (frames[0]?.time ?? 0) + this.elapsedPlaybackTime;
 
     while (
@@ -538,12 +541,33 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.currentFrameIndex = 0;
       this.elapsedPlaybackTime = 0;
       this.wallClockElapsed = 0;
-      // Reset scores on loop
+      this.kickoffStarted = false;
       this.blueScore   = 0;
       this.orangeScore = 0;
     }
 
     const frame = frames[this.currentFrameIndex];
+
+    // Detect kickoff: check if any car has moved more than 50 units from
+    // its starting position — once true, never resets until loop-around
+    if (!this.kickoffStarted && frame.players.length > 0) {
+      for (const p of frame.players) {
+        const init = this.initialCarPositions.get(p.name);
+        if (init) {
+          const dx = p.x - init.x;
+          const dy = p.y - init.y;
+          if (Math.sqrt(dx * dx + dy * dy) > 50) {
+            this.kickoffStarted = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Only tick the clock once kickoff movement has started
+    if (this.kickoffStarted) {
+      this.wallClockElapsed += deltaSeconds * this.playbackSpeed;
+    }
 
     // Clock: RL games are 5 minutes (300s). The replay may include pre-game
     // and post-game time making it longer than 300s. We cap the countdown
