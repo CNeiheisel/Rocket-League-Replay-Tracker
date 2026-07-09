@@ -9,6 +9,8 @@ import { ReplayListComponent } from './replay-list/replay-list.component';
 import { ReplayShowcaseComponent } from './replay-showcase/replay-showcase.component';
 import { Player, ReplayMatch, TrendPoint } from './models/replay-tracker.models';
 import { ReplayTrackerApiService } from './services/replay-tracker-api.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -39,9 +41,31 @@ export class AppComponent implements OnInit {
   filter = { days: 30 };
   trends: TrendPoint[] = [];
 
-  constructor(private readonly replayTrackerApi: ReplayTrackerApiService) {}
+  constructor(
+    private readonly replayTrackerApi: ReplayTrackerApiService,
+    private readonly http: HttpClient
+  ) {}
 
   ngOnInit(): void {
+    // Warm up the backend immediately then load data.
+    // Render free tier spins down after inactivity causing ~15s cold starts.
+    // Pinging /api/health first gives the server time to wake before data requests.
+    this.warmUpThenLoad();
+
+    // Keep backend alive every 14 minutes so it doesn't spin down during a session
+    setInterval(() => {
+      this.http.get(`${environment.apiUrl}/health`).subscribe({ error: () => {} });
+    }, 14 * 60 * 1000);
+  }
+
+  private async warmUpThenLoad(): Promise<void> {
+    // Ping health endpoint first — if it takes a long time that's the cold start,
+    // and by the time it returns the server is warm for the real data requests.
+    try {
+      await firstValueFrom(this.http.get(`${environment.apiUrl}/health`));
+    } catch {
+      // Even if health check fails, still try loading data
+    }
     this.loadData();
   }
 

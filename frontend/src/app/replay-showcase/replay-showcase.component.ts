@@ -19,6 +19,7 @@ interface ShowcaseReplay {
   team_size: number;
   blue_score: number;
   orange_score: number;
+  goals: { time: number; player: string; team: string }[];
   frames: ShowcaseFrame[];
 }
 
@@ -49,7 +50,10 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
   orangeScore = 0;
   playerNames: string[] = [];
   isPlaying = true;
-  currentTime = '5:00'; // updated each frame from replay data
+  currentTime = '5:00';
+  private finalBlueScore = 0;
+  private finalOrangeScore = 0;
+  private wallClockElapsed = 0; // total real seconds elapsed during playback
 
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
@@ -103,12 +107,13 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
       this.replay = await firstValueFrom(
         this.http.get<ShowcaseReplay>(`${environment.apiUrl}/showcase-replay`)
       );
-      this.mapName    = this.formatMapName(this.replay.map_name);
-      this.blueScore  = this.replay.blue_score;
-      this.orangeScore = this.replay.orange_score;
+      this.mapName     = this.formatMapName(this.replay.map_name);
+      // Start scores at 0 — they increment as goals are scored during playback
+      this.blueScore   = 0;
+      this.orangeScore = 0;
+      this.finalBlueScore   = this.replay.blue_score;
+      this.finalOrangeScore = this.replay.orange_score;
 
-      // Find first frame that actually has all players (frame 0 may be empty
-      // if player names hadn't resolved yet at the start of the replay)
       const firstPopulatedFrame = this.replay.frames.find(f => f.players.length > 0);
       this.playerNames = [...new Set(firstPopulatedFrame?.players.map(p => p.name) ?? [])];
       this.loading = false;
@@ -488,6 +493,7 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     const frames = this.replay.frames;
 
     this.elapsedPlaybackTime += deltaSeconds * this.playbackSpeed;
+    this.wallClockElapsed   += deltaSeconds * this.playbackSpeed;
     const targetTime = (frames[0]?.time ?? 0) + this.elapsedPlaybackTime;
 
     while (
@@ -500,19 +506,38 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.currentFrameIndex >= frames.length - 1) {
       this.currentFrameIndex = 0;
       this.elapsedPlaybackTime = 0;
+      this.wallClockElapsed = 0;
+      // Reset scores on loop
+      this.blueScore   = 0;
+      this.orangeScore = 0;
     }
 
     const frame = frames[this.currentFrameIndex];
 
-    // Update match clock — RL games are 300s counting down.
-    // The replay starts partway through so we calculate remaining time
-    // from the replay's total duration and current position.
+    // Clock: use wall-clock elapsed time so it keeps ticking even between
+    // goals when no RigidBody updates are happening and frame index stalls.
+    // Count down from replay duration.
     const replayDuration = (frames[frames.length - 1]?.time ?? 300) - (frames[0]?.time ?? 0);
-    const elapsed = frame.time - (frames[0]?.time ?? 0);
-    const remaining = Math.max(0, replayDuration - elapsed);
+    const remaining = Math.max(0, replayDuration - this.wallClockElapsed);
     const mins = Math.floor(remaining / 60);
     const secs = Math.floor(remaining % 60);
     this.currentTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+    // Score: count goals whose timestamp has passed in the current replay time.
+    // Uses actual goal frame times from the replay header — accurate to the frame.
+    if (this.replay.goals?.length) {
+      const currentReplayTime = frame.time;
+      let blue = 0;
+      let orange = 0;
+      for (const goal of this.replay.goals) {
+        if (goal.time <= currentReplayTime) {
+          if (goal.team === 'blue') blue++;
+          else orange++;
+        }
+      }
+      this.blueScore   = blue;
+      this.orangeScore = orange;
+    }
 
     const ballPos = frame.ball
       ? new THREE.Vector3(frame.ball.x * SCALE, frame.ball.z * SCALE, frame.ball.y * SCALE)
