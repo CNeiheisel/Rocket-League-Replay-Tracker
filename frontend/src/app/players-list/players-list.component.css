@@ -1,34 +1,23 @@
+/* Players list inherits .card, .table, .table-wrap from globals */
+
 .section-header {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
 }
 
 .section-header h2 {
-  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .section-header p {
-  margin: 0;
-  color: var(--text-soft);
-}
-
-.table-wrap {
-  overflow-x: auto;
-  margin-top: 0.8rem;
-}
-
-.table tbody tr {
-  cursor: pointer;
-}
-
-.row-selected {
-  background: rgba(96, 198, 255, 0.14);
-}
-
-.empty {
-  margin: 1rem 0 0;
-  color: var(--text-soft);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }

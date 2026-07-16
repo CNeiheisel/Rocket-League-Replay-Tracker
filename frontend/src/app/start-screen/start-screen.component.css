@@ -1,132 +1,129 @@
-.hero {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(73, 210, 255, 0.26);
-}
-
-.hero::after {
-  content: '';
-  position: absolute;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  right: -120px;
-  top: -140px;
-  background: radial-gradient(circle, rgba(255, 110, 42, 0.22), transparent 70%);
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
+/* ── Hero ────────────────────────────────────────────────── */
+.hero.card {
+  padding: 2rem 1.75rem 1.75rem;
+  border-left: 3px solid var(--gold);
+  background: var(--bg-surface);
 }
 
 .kicker {
-  margin: 0;
-  color: var(--text-muted);
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 500;
   text-transform: uppercase;
-  font-weight: 700;
-  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  margin-bottom: 0.55rem;
 }
 
 .hero-title {
-  margin: 8px 0;
-  font-size: clamp(2rem, 6vw, 3.4rem);
-  line-height: 1.05;
-  max-width: 16ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.6rem;
 }
 
 .hero-subtitle {
-  margin: 0;
+  font-size: 0.9rem;
   color: var(--text-soft);
-  max-width: 56ch;
+  max-width: 52ch;
+  line-height: 1.6;
 }
 
+/* ── Import section ──────────────────────────────────────── */
 .start-layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.2rem;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: start;
 }
 
 .section-title {
-  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.3rem;
 }
 
 .section-copy {
-  margin: 0.4rem 0 1rem;
-  color: var(--text-soft);
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin-bottom: 0.9rem;
+  max-width: 48ch;
 }
 
 .single-import-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.8rem;
-  margin-bottom: 1rem;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
 }
 
+/* ── Batch import ────────────────────────────────────────── */
 .batch-box {
-  border: 1px solid var(--border-color);
-  border-radius: 0.9rem;
-  padding: 0.8rem;
-  background: rgba(7, 17, 36, 0.48);
+  margin-top: 0.5rem;
 }
 
 .batch-box summary {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
   cursor: pointer;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.4rem 0;
+  user-select: none;
+  list-style: none;
 }
+
+.batch-box summary::-webkit-details-marker { display: none; }
+
+.batch-box summary::before {
+  content: '+ ';
+  color: var(--gold);
+}
+
+.batch-box[open] summary::before { content: '− '; }
 
 .batch-box .textarea-field {
-  margin-bottom: 0.7rem;
+  margin: 0.5rem 0;
+  resize: vertical;
+  min-height: 80px;
 }
 
+/* ── Status panel ────────────────────────────────────────── */
 .status-panel {
-  border: 1px solid var(--border-color);
-  border-radius: 0.9rem;
-  padding: 1rem;
-  background: rgba(5, 13, 28, 0.74);
-  align-self: start;
+  min-width: 200px;
+  background: var(--bg-mid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
 }
 
 .status-title {
-  margin: 0 0 0.6rem;
-  color: var(--text-soft);
-  font-size: 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
 }
 
 .status-message {
-  margin: 0;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.status-success {
-  color: #87f0a8;
-}
+.status-success { color: #5ecb8a; }
+.status-warning { color: var(--gold); }
+.status-error   { color: #e05c5c; }
+.status-info    { color: var(--text-soft); }
 
-.status-warning {
-  color: #ffd365;
-}
-
-.status-error {
-  color: #ff9b9f;
-}
-
-.status-info {
-  color: #8bd8ff;
-}
-
-@media (max-width: 960px) {
-  .start-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 620px) {
-  .single-import-row {
-    grid-template-columns: 1fr;
-  }
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .start-layout { grid-template-columns: 1fr; }
+  .single-import-row { grid-template-columns: 1fr; }
+  .hero.card { padding: 1.4rem 1rem; }
 }
