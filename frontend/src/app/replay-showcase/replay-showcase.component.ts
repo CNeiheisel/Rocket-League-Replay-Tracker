@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { environment } from '../../environments/environment';
+import { BackendWarmupService } from '../services/backend-warmup.service';
 
 interface ShowcaseFrame {
   time: number;
@@ -84,9 +85,17 @@ export class ReplayShowcaseComponent implements OnInit, AfterViewInit, OnDestroy
     unknown: 0x888888
   };
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly warmup: BackendWarmupService
+  ) {}
 
-  ngOnInit(): void { this.loadReplay(); }
+  ngOnInit(): void {
+    // Await the shared warmup promise so the showcase fetch never races
+    // against Render's cold start — the warmup is already in flight from
+    // AppComponent construction, so this usually resolves immediately.
+    this.warmup.ready.then(() => this.loadReplay());
+  }
 
   ngAfterViewInit(): void {
     this.initScene();

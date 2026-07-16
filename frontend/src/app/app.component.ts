@@ -9,8 +9,7 @@ import { ReplayListComponent } from './replay-list/replay-list.component';
 import { ReplayShowcaseComponent } from './replay-showcase/replay-showcase.component';
 import { Player, ReplayMatch, TrendPoint } from './models/replay-tracker.models';
 import { ReplayTrackerApiService } from './services/replay-tracker-api.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../environments/environment';
+import { BackendWarmupService } from './services/backend-warmup.service';
 
 @Component({
   selector: 'app-root',
@@ -43,30 +42,15 @@ export class AppComponent implements OnInit {
 
   constructor(
     private readonly replayTrackerApi: ReplayTrackerApiService,
-    private readonly http: HttpClient
+    private readonly warmup: BackendWarmupService
   ) {}
 
   ngOnInit(): void {
-    // Warm up the backend immediately then load data.
-    // Render free tier spins down after inactivity causing ~15s cold starts.
-    // Pinging /api/health first gives the server time to wake before data requests.
-    this.warmUpThenLoad();
-
-    // Keep backend alive every 14 minutes so it doesn't spin down during a session
-    setInterval(() => {
-      this.http.get(`${environment.apiUrl}/health`).subscribe({ error: () => {} });
-    }, 14 * 60 * 1000);
-  }
-
-  private async warmUpThenLoad(): Promise<void> {
-    // Ping health endpoint first — if it takes a long time that's the cold start,
-    // and by the time it returns the server is warm for the real data requests.
-    try {
-      await firstValueFrom(this.http.get(`${environment.apiUrl}/health`));
-    } catch {
-      // Even if health check fails, still try loading data
-    }
-    this.loadData();
+    // Wait for the shared warmup promise before loading data.
+    // BackendWarmupService pings /api/health on construction (which
+    // happens at app startup), so by the time ngOnInit runs the
+    // warm-up is likely already in flight or complete.
+    this.warmup.ready.then(() => this.loadData());
   }
 
   stripZeros(value: number): number {
@@ -103,7 +87,6 @@ export class AppComponent implements OnInit {
       this.trends = [];
       return;
     }
-
     try {
       this.trends = await firstValueFrom(
         this.replayTrackerApi.fetchTrends(this.selectedPlayer.playerId, this.filter.days)
@@ -122,7 +105,6 @@ export class AppComponent implements OnInit {
       this.selectedPlayerId = null;
       return;
     }
-
     this.selectedPlayer = this.players.find((player) => player.playerId === id) ?? null;
     this.selectedPlayerId = id;
     this.fetchTrends();
@@ -137,11 +119,9 @@ export class AppComponent implements OnInit {
       this.uploadStatus = 'Please enter a replay ID';
       return;
     }
-
     this.uploadStatus = 'Importing replay...';
     try {
       const response = await firstValueFrom(this.replayTrackerApi.importReplay(this.replayId));
-
       if (response?.success) {
         this.uploadStatus = 'Import successful';
         this.replayId = '';
@@ -151,30 +131,20 @@ export class AppComponent implements OnInit {
         this.uploadStatus = 'Import failed';
       }
     } catch (error: any) {
-      if (error?.status === 409) {
-        this.uploadStatus = 'Replay already imported';
-      } else {
-        this.uploadStatus = 'Import error';
-      }
+      this.uploadStatus = error?.status === 409 ? 'Replay already imported' : 'Import error';
       console.error('Import error:', error);
     }
   }
 
   async handleBatchImport(): Promise<void> {
-    const ids = this.batchReplayIds
-      .split('\n')
-      .map((id) => id.trim())
-      .filter((id) => id);
-
+    const ids = this.batchReplayIds.split('\n').map(id => id.trim()).filter(id => id);
     if (!ids.length) {
       this.uploadStatus = 'Please enter replay IDs';
       return;
     }
-
     this.uploadStatus = `Importing ${ids.length} replays...`;
     try {
       const response = await firstValueFrom(this.replayTrackerApi.batchImport(ids));
-
       this.uploadStatus = `Success: ${response.success?.length ?? 0} | Skipped: ${response.skipped?.length ?? 0} | Failed: ${response.failed?.length ?? 0}`;
       this.batchReplayIds = '';
       await this.loadData();
@@ -187,25 +157,15 @@ export class AppComponent implements OnInit {
 
   get overviewStats() {
     return [
-      {
-        label: 'Total Matches',
-        value: this.matches.length
-      },
-      {
-        label: 'Total Players',
-        value: this.players.length
-      },
+      { label: 'Total Matches', value: this.matches.length },
+      { label: 'Total Players', value: this.players.length },
       {
         label: 'Avg Goals/Game',
-        value:
-          this.players.length > 0
-            ? (this.players.reduce((sum, player) => sum + Number(player.averageGoals || 0), 0) / this.players.length).toFixed(2)
-            : '0.00'
+        value: this.players.length > 0
+          ? (this.players.reduce((sum, p) => sum + Number(p.averageGoals || 0), 0) / this.players.length).toFixed(2)
+          : '0.00'
       },
-      {
-        label: 'Total MVPs',
-        value: this.players.reduce((sum, player) => sum + Number(player.mvpCount || 0), 0)
-      }
+      { label: 'Total MVPs', value: this.players.reduce((sum, p) => sum + Number(p.mvpCount || 0), 0) }
     ];
   }
 }
