@@ -1,0 +1,1 @@
+{"ast":null,"code":"export const environment = {\n  production: true,\n  apiUrl: 'https://d2dtgib6veh626.cloudfront.net/api'\n};","map":null,"metadata":{},"sourceType":"module","externalDependencies":[]}

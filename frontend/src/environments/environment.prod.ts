@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://rocket-league-replay-tracker.onrender.com/api'
+  apiUrl: 'https://d2dtgib6veh626.cloudfront.net/api'
 };
