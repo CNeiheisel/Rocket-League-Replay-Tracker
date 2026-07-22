@@ -5,3 +5,9 @@ node_modules/
 backend/replay_parser
 backend/replay_parser.exe
 frontend/build/
+frontend/.angular/
+frontend/policy.json
+frontend/aws
+frontend/powershell
+policy.json
+cf-*.json
