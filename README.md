@@ -4,6 +4,8 @@ A full-stack analytics platform that parses Rocket League replay files and turns
 
 🔗 **Live site:** [rocket-league-replay-tracker.app](https://d2dtgib6veh626.cloudfront.net)
 
+<img width="1917" height="1027" alt="image" src="https://github.com/user-attachments/assets/09f910a0-404c-4f19-8dda-846b18af028f" />
+
 ---
 
 ## Overview
