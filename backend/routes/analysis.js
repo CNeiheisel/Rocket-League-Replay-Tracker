@@ -190,7 +190,7 @@ router.post('/analyze', async (req, res) => {
     const prompt = buildSingleGamePrompt(stats, player_name, match_info || {});
 
     const message = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -241,7 +241,7 @@ router.post('/analyze-player', async (req, res) => {
     const prompt = buildAcrossGamesPrompt(player_name, aggregated_stats, recent_games);
 
     const message = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });

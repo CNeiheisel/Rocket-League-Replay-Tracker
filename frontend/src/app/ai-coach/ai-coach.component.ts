@@ -105,7 +105,7 @@ export class AiCoachComponent implements OnChanges {
       this.analysis = this.mapResponse(response);
     } catch (err: unknown) {
       console.error('Analysis failed:', err);
-      this.error = 'Analysis failed. Make sure your GROQ_API_KEY is set on Render and replays have been imported.';
+      this.error = 'Analysis failed. Please try again or ensure replays have been imported.';
     } finally {
       this.loading = false;
     }
