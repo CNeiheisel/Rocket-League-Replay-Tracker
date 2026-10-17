@@ -71,9 +71,8 @@ The app is containerized with Docker Compose for local development and deployed 
    docker-compose up
    ```
 
-4. The frontend will be available at `http://localhost:<port>` and the backend API at `http://localhost:<port>`
+4. The frontend will be available at `http://localhost:4200` and the backend API at `http://localhost:5000`
 
-*(Update the ports above to match your actual `docker-compose.yml` config.)*
 
 ## Roadmap
 
