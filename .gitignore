@@ -12,3 +12,4 @@ frontend/powershell
 policy.json
 cf-*.json
 backend/.env
+env.example
