@@ -11,3 +11,4 @@ frontend/aws
 frontend/powershell
 policy.json
 cf-*.json
+backend/.env
